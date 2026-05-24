@@ -35,6 +35,7 @@ ProjectName/
 ├── DESIGN_HUB/
 ├── AI_RULES/
 ├── AI_TASKS/
+├── GPT_DEMO/
 ├── WEB_DEMO/
 ├── UNITY_SOURCE/
 ├── UNITY_PROJECT/
@@ -50,7 +51,8 @@ PROJECT_STATUS 是当前状态仪表盘；
 DESIGN_HUB 管方向；
 AI_RULES 管 AI；
 AI_TASKS 管执行；
-WEB_DEMO 管 Web 原型及其 Data / Assets / Tools / Tests；
+GPT_DEMO 管 ChatGPT 讨论阶段的快速可试玩网页草图；
+WEB_DEMO 管确认方案后的正式 Web 原型及其 Data / Assets / Tools / Tests；
 UNITY_SOURCE 管 Unity 源码学习 / 改造及其项目内部文件；
 UNITY_PROJECT 管未来自建 Unity 原型及其项目内部文件；
 Docs 管跨阶段资料和分析文档；
@@ -75,9 +77,32 @@ DESIGN_HUB/00_PROJECT_CANVAS.md
 DESIGN_HUB/17_AUXILIARY_TOOLS_PLAN.md
 DESIGN_HUB/18_VERSION_GATE.md
 DESIGN_HUB/19_NOT_NOW.md
+GPT_DEMO/README.md
 ```
 
-然后先进行立项访谈，不直接进入开发。
+然后先进行立项访谈，不直接进入正式开发。
+
+## 3.1 Prototype First / 先试玩后定稿流程
+
+如果用户希望快速确认方向，允许在正式写入设计文档和正式开发前，先进入 `GPT_DEMO/` 阶段。
+
+`GPT_DEMO/` 的作用是：
+
+```text
+ChatGPT 与用户讨论方案；
+ChatGPT 快速生成可运行网页草图；
+用户直观试玩；
+用户反馈并反复修正方向；
+方向确认后，再写入 DESIGN_HUB/ 与 AI_TASKS/；
+最后由 Codex 或正式开发流程重构到 WEB_DEMO/。
+```
+
+关键区别：
+
+```text
+GPT_DEMO = 方向验证草图，可以快、糙、临时；
+WEB_DEMO = 正式原型工程，必须有任务卡、范围约束和可维护结构。
+```
 
 推荐流程：
 
@@ -86,13 +111,15 @@ DESIGN_HUB/19_NOT_NOW.md
 ↓
 ChatGPT 读取 GitHub 模板仓库
 ↓
-ChatGPT 读取 PROJECT_STATUS、00_FAST_CONTEXT 与 00_PROJECT_CANVAS
+ChatGPT 读取 PROJECT_STATUS、00_FAST_CONTEXT、00_PROJECT_CANVAS 与 GPT_DEMO/README.md
 ↓
 ChatGPT 向用户提问：类型、题材、目标用户、核心玩法、参考产品、最小 Demo 目标
 ↓
-ChatGPT 同时分析：这个项目需要哪些辅助工具，才能让策划高效迭代
+如用户需要直观验证，ChatGPT 可先在 GPT_DEMO/ 生成快速可试玩网页草图
 ↓
-用户回答
+用户试玩 GPT_DEMO，反馈方向是否一致
+↓
+ChatGPT 迭代 GPT_DEMO，直到用户确认方向
 ↓
 ChatGPT 整理立项档案草案、辅助工具规划草案、暂不做清单
 ↓
@@ -108,17 +135,14 @@ ChatGPT 更新 PROJECT_STATUS.md 与 AI_RULES/00_FAST_CONTEXT.md
 ↓
 由 CURRENT_TASK.md 派生 AI_TASKS/NEXT_CODEX_PROMPT.md
 ↓
-Codex 开始 WEB_DEMO/ 开发
+Codex 开始 WEB_DEMO/ 正式开发或重构
 ```
 
 关键原则：
 
 ```text
-先讨论；
-再确认；
-再写入 GitHub；
-先生成任务卡；
-最后才进入开发。
+可以先 GPT_DEMO 快速看见方向；
+但正式开发仍必须先讨论、再确认、再写入 GitHub、先生成任务卡、最后进入 WEB_DEMO/。
 ```
 
 ---
@@ -135,6 +159,12 @@ Codex 开始 WEB_DEMO/ 开发
 1. PROJECT_STATUS.md
 2. AI_RULES/00_FAST_CONTEXT.md
 3. AI_TASKS/CURRENT_TASK.md
+```
+
+## ChatGPT 进行快速草图时额外必读
+
+```text
+4. GPT_DEMO/README.md
 ```
 
 ## Codex 执行任务时额外必读
@@ -156,6 +186,15 @@ DESIGN_HUB/00_PROJECT_CANVAS.md
 DESIGN_HUB/17_AUXILIARY_TOOLS_PLAN.md
 DESIGN_HUB/18_VERSION_GATE.md
 DESIGN_HUB/19_NOT_NOW.md
+GPT_DEMO/README.md
+```
+
+### GPT_DEMO 快速草图
+
+```text
+GPT_DEMO/README.md
+DESIGN_HUB/00_PROJECT_CANVAS.md，如已有
+DESIGN_HUB/12_DEMO_SCOPE.md，如已有
 ```
 
 ### Web Demo 开发
@@ -207,7 +246,13 @@ AI_RULES/01_AI_READ_ORDER.md
 如果是新项目立项阶段，AI 应继续说明：
 
 ```text
-我将先进行立项访谈，暂不进入开发，并会同时分析本项目可能需要的辅助工具。
+我将先进行立项访谈，暂不进入正式开发，并会同时分析本项目可能需要的辅助工具。
+```
+
+如果用户明确要求快速直观验证，AI 可以说明：
+
+```text
+本轮可先进入 GPT_DEMO 快速草图阶段，生成可运行网页用于方向验证；确认后再沉淀正式文档和任务卡。
 ```
 
 如果执行者是 Codex，还必须先输出任务归属判断。
@@ -265,7 +310,7 @@ AI_TASKS/CURRENT_TASK.md
 # 6. 当前推荐主工作流
 
 ```text
-ChatGPT：制作人 / 总策划 / 立项访谈 / 辅助工具规划 / 任务拆解 / 产品复审
+ChatGPT：制作人 / 总策划 / 立项访谈 / GPT_DEMO 快速可试玩草图 / 辅助工具规划 / 任务拆解 / 产品复审
 Codex：Web Demo 主开发 / Unity 源码体检 / 兼容性修复 / 代码审核 / AI 任务调度者
 DeepSeek：模块开发 / 批量配置 / 重复性代码 / 文档整理
 Figma：UI 原型和界面表达
@@ -282,7 +327,8 @@ Unity：v1.x 之后用于源码学习、改造和未来独立原型
 # 7. 阶段路线
 
 ```text
-v0.x = Web Demo 原型阶段
+gpt.x = GPT_DEMO 快速可试玩草图阶段
+v0.x = Web Demo 正式原型阶段
 v1.x = Unity 源码学习 / 改造阶段
 v2.x = Unity 独立原型阶段
 v3.x = 可展示垂直切片阶段
@@ -344,6 +390,8 @@ Web Demo 阶段优先使用：
 WEB_DEMO/Data/config/
 ```
 
+GPT_DEMO 阶段允许少量硬编码，以便快速验证方向；方向确认后，进入 WEB_DEMO 时再配置化。
+
 详细规则见：
 
 ```text
@@ -354,7 +402,9 @@ AI_RULES/09_CONFIG_FIRST_RULE.md
 
 # 10. 试玩反馈转任务
 
-试玩反馈不应直接变成开发冲动，必须先分类、定级，再生成任务。
+试玩反馈不应直接变成正式开发冲动，必须先分类、定级，再生成任务。
+
+GPT_DEMO 阶段的试玩反馈可以先用于快速迭代草图；当方向确认后，应沉淀到正式设计文档和任务卡。
 
 流程见：
 
@@ -381,15 +431,17 @@ UNITY_SOURCE/SOURCE_CANDIDATES.md
 ```text
 当前目标：先做 Demo，不直接追求完整游戏。
 项目启动：新项目先通过 00_PROJECT_CANVAS.md 完成立项访谈，并通过 17_AUXILIARY_TOOLS_PLAN.md 分析辅助工具需求。
+GPT_DEMO 原则：方案不清晰时，允许 ChatGPT 先在 GPT_DEMO/ 生成可运行网页草图，帮助用户直观确认方向。
+GPT_DEMO 边界：GPT_DEMO 是临时草图，不等于正式工程；确认后必须沉淀到 DESIGN_HUB/ 与 AI_TASKS/。
 状态同步：每轮关键任务后更新 PROJECT_STATUS.md 与 AI_RULES/00_FAST_CONTEXT.md。
 任务来源：CURRENT_TASK.md 是当前任务唯一事实来源。
 Codex 提示：NEXT_CODEX_PROMPT.md 是从 CURRENT_TASK.md 派生的执行提示词。
 版本推进：按 18_VERSION_GATE.md 控制阶段推进。
 暂不做：按 19_NOT_NOW.md 防止 AI 过度发散。
-配置优先：策划可能频繁调整的内容，不得硬编码。
+配置优先：策划可能频繁调整的内容，不得硬编码；GPT_DEMO 阶段允许为了速度临时硬编码。
 Demo 展示：Demo 必须能让美术、程序、制作人或外部评审快速看懂。
-开发顺序：Web Demo → Unity 源码学习 / 改造 → Unity 独立原型。
+开发顺序：GPT_DEMO 快速草图 → Web Demo 正式原型 → Unity 源码学习 / 改造 → Unity 独立原型。
 Web Demo 路径原则：Web Demo 使用 WEB_DEMO/ 独立工作区。
 Unity 路线原则：先做源码学习 / 改造，不默认从 0 创建 Unity 项目。
-根目录瘦身原则：不要在根目录默认创建具体工程目录，具体文件应放入 WEB_DEMO/、UNITY_SOURCE/ 或 UNITY_PROJECT/ 内部。
+根目录瘦身原则：不要在根目录默认创建具体工程目录，具体文件应放入 GPT_DEMO/、WEB_DEMO/、UNITY_SOURCE/ 或 UNITY_PROJECT/ 内部。
 ```
