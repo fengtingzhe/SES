@@ -3,15 +3,15 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>《看海去》GPT_DEMO gpt.3</title>
+  <title>《看海去》GPT_DEMO gpt.4</title>
   <style>
     html, body { margin: 0; height: 100%; overflow: hidden; background: #081012; font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #eaf3ef; }
     canvas { display: block; width: 100vw; height: 100vh; cursor: crosshair; }
-    .panel { position: fixed; left: 18px; top: 16px; width: 410px; padding: 14px 16px; border-radius: 16px; background: rgba(7, 16, 17, .76); border: 1px solid rgba(218, 239, 230, .16); box-shadow: 0 18px 46px rgba(0,0,0,.35); backdrop-filter: blur(8px); line-height: 1.65; font-size: 14px; }
+    .panel { position: fixed; left: 18px; top: 16px; width: 430px; padding: 14px 16px; border-radius: 16px; background: rgba(7, 16, 17, .76); border: 1px solid rgba(218, 239, 230, .16); box-shadow: 0 18px 46px rgba(0,0,0,.35); backdrop-filter: blur(8px); line-height: 1.65; font-size: 14px; }
     .panel h1 { margin: 0 0 6px; font-size: 17px; letter-spacing: .04em; }
     .panel b { color: #fff1b8; }
     .panel .small { color: #b9cdc5; font-size: 12px; }
-    .help { position: fixed; right: 18px; bottom: 16px; max-width: 510px; padding: 12px 14px; border-radius: 16px; background: rgba(7, 16, 17, .66); border: 1px solid rgba(218,239,230,.14); color: #c8d7d1; font-size: 13px; line-height: 1.65; }
+    .help { position: fixed; right: 18px; bottom: 16px; max-width: 560px; padding: 12px 14px; border-radius: 16px; background: rgba(7, 16, 17, .66); border: 1px solid rgba(218,239,230,.14); color: #c8d7d1; font-size: 13px; line-height: 1.65; }
     .toast { position: fixed; left: 50%; transform: translateX(-50%); top: 20px; padding: 10px 16px; border-radius: 999px; background: rgba(237, 248, 241, .94); color: #173033; font-weight: 700; opacity: 0; transition: opacity .18s; pointer-events: none; }
     .toast.show { opacity: 1; }
   </style>
@@ -21,7 +21,7 @@
 <div class="panel" id="panel"></div>
 <div class="help">
   <b>操作</b>：WASD / 方向键移动；鼠标点击带标签的树障、断桥或空地派工；Space 投掷辉石临时光圈；R 重新生成。<br>
-  <b>gpt.3 调整</b>：黑林影会攻击安全圈外的玩家；被攻击会随机掉落辉石，辉石为 0 时再次被攻击游戏结束。工人完成任务后会返回最近营火 / 部落。
+  <b>gpt.4 调整</b>：派工时选择“可通行路径最短”的空闲工人；工人沿道路寻路，不再直线穿过森林、河流、岩石。
 </div>
 <div class="toast" id="toast"></div>
 <script>
@@ -42,6 +42,8 @@
   function rnd(n) { return Math.floor(Math.random() * n); }
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
   function distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+  function keyOf(x, y) { return `${x},${y}`; }
+  function tileOf(e) { return { x: Math.round(e.x), y: Math.round(e.y) }; }
   function say(t) { toast.textContent = t; toast.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.classList.remove('show'), 1900); }
 
   function resize() { canvas.width = innerWidth; canvas.height = innerHeight; }
@@ -50,7 +52,7 @@
   function reset() {
     map = makeMap();
     player = { x: START.x, y: START.y, speed: 4.35, invuln: 0, hitFlash: 0 };
-    workers = [0, 1, 2, 3].map(i => ({ id: i + 1, x: START.x, y: START.y - 1 + i, state: 'idle', job: null, progress: 0, lost: false, scared: false }));
+    workers = [0, 1, 2, 3].map(i => ({ id: i + 1, x: START.x, y: START.y - 1 + i, state: 'idle', job: null, path: [], pathIndex: 0, progress: 0, lost: false, scared: false }));
     shades = [];
     pulses = [];
     stones = 5;
@@ -62,7 +64,7 @@
     ended = false;
     gameOver = false;
     reveal();
-    say('gpt.3：黑林影会攻击玩家；工人完成任务后会返回营火。');
+    say('gpt.4：最近工人会沿可通行路径前往任务。');
   }
 
   function makeMap() {
@@ -114,7 +116,6 @@
   function makeRiver(m, riverX) {
     for (let yy = 2; yy < H - 2; yy++) {
       m[yy][riverX].t = T.WATER; m[yy][riverX].job = null;
-      if (Math.random() < .22) { m[yy][riverX + 1].t = T.WATER; m[yy][riverX + 1].job = null; }
     }
     let bridgeY = START.y;
     for (let yy = 4; yy < H - 4; yy++) {
@@ -125,6 +126,36 @@
 
   function open(m, x, y) { if (m[y] && m[y][x]) { m[y][x].t = T.GRASS; m[y][x].job = null; } }
   function passable(x, y) { const c = map[y]?.[x]; return c && [T.GRASS, T.BRIDGE, T.CAMP, T.VILLAGE, T.STONE, T.GOAL].includes(c.t); }
+  function workAdjacentTiles(x, y) {
+    return [{x:x+1,y},{x:x-1,y},{x,y:y+1},{x,y:y-1}].filter(p => passable(p.x, p.y));
+  }
+
+  function findPath(start, goal) {
+    const sx = Math.round(start.x), sy = Math.round(start.y), gx = Math.round(goal.x), gy = Math.round(goal.y);
+    if (!passable(sx, sy) || !passable(gx, gy)) return null;
+    if (sx === gx && sy === gy) return [{x:sx, y:sy}];
+    const q = [{x:sx, y:sy}];
+    const came = new Map();
+    came.set(keyOf(sx, sy), null);
+    const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+    for (let head = 0; head < q.length; head++) {
+      const cur = q[head];
+      for (const [dx, dy] of dirs) {
+        const nx = cur.x + dx, ny = cur.y + dy;
+        const k = keyOf(nx, ny);
+        if (came.has(k) || !passable(nx, ny)) continue;
+        came.set(k, cur);
+        if (nx === gx && ny === gy) {
+          const path = [{x:nx, y:ny}];
+          let back = cur;
+          while (back) { path.push({x:back.x, y:back.y}); back = came.get(keyOf(back.x, back.y)); }
+          return path.reverse();
+        }
+        q.push({x:nx, y:ny});
+      }
+    }
+    return null;
+  }
 
   function iso(x, y) { return { x: (x - y) * TW / 2 + canvas.width / 2 + camera.x, y: (x + y) * TH / 2 + 70 + camera.y }; }
   function fromScreen(sx, sy) {
@@ -182,65 +213,107 @@
   function clickTile(x, y) {
     if (gameOver) return;
     const c = map[y]?.[x]; if (!c) return;
-    const w = workers.find(w => !w.lost && w.state === 'idle');
-    if (!w) return say('没有空闲工人。工人必须先返回营火。');
-    let cost = 0, job = null;
-    if (c.job === 'chop') { cost = 1; job = 'chop'; }
-    else if (c.job === 'repair') { cost = 2; job = 'repair'; }
-    else if (c.t === T.GRASS && c.seen) { cost = 2; job = 'camp'; }
+    let cost = 0, jobType = null, workTargets = [];
+    if (c.job === 'chop') { cost = 1; jobType = 'chop'; workTargets = workAdjacentTiles(x, y); }
+    else if (c.job === 'repair') { cost = 2; jobType = 'repair'; workTargets = workAdjacentTiles(x, y); }
+    else if (c.t === T.GRASS && c.seen) { cost = 2; jobType = 'camp'; workTargets = [{x, y}]; }
     else return say('这里暂时不能派工。');
     if (stones < cost) return say('辉石不足。');
+    if (!workTargets.length) return say('没有可抵达的工作位置，需要先开路。');
+
+    const choice = chooseBestWorker(workTargets);
+    if (!choice) return say('没有空闲工人，或没有可通行路径。');
     stones -= cost;
-    w.job = { x, y, type: job };
-    w.state = 'moving'; w.progress = 0;
-    say(`工人 ${w.id} 出发，命令不可取消。`);
+    choice.worker.job = { type: jobType, targetX: x, targetY: y, workX: choice.dest.x, workY: choice.dest.y };
+    choice.worker.path = choice.path;
+    choice.worker.pathIndex = 1;
+    choice.worker.state = 'moving';
+    choice.worker.progress = 0;
+    say(`工人 ${choice.worker.id} 路径最近，已出发。`);
+  }
+
+  function chooseBestWorker(destinations) {
+    let best = null;
+    for (const w of workers) {
+      if (w.lost || w.state !== 'idle') continue;
+      const start = tileOf(w);
+      for (const dest of destinations) {
+        const path = findPath(start, dest);
+        if (!path) continue;
+        if (!best || path.length < best.path.length) best = { worker: w, dest, path };
+      }
+    }
+    return best;
   }
 
   function updateWorkers(dt) {
     for (const w of workers) {
       if (w.lost || !w.job) continue;
       w.scared = night() && !safe(w.x, w.y);
-      const tx = w.job.x, ty = w.job.y;
-      if (w.state === 'moving' || w.state === 'returning') {
-        const d = Math.hypot(tx - w.x, ty - w.y);
-        if (d > .08) {
-          const sp = w.scared ? 1.1 : 2.25;
-          w.x += (tx - w.x) / d * sp * dt;
-          w.y += (ty - w.y) / d * sp * dt;
-        } else {
-          w.x = tx; w.y = ty;
-          if (w.state === 'returning') {
-            w.job = null; w.state = 'idle'; w.progress = 0; w.scared = false;
-            say(`工人 ${w.id} 已返回安全点。`);
-          } else {
-            w.state = 'working';
-          }
-        }
-      } else if (w.state === 'working') {
+      if (w.state === 'moving' || w.state === 'returning') moveWorkerAlongPath(w, dt);
+      else if (w.state === 'working') {
         w.progress += dt * (w.scared ? .35 : 1);
         if (w.progress >= 4.2) finish(w);
       }
     }
   }
 
+  function moveWorkerAlongPath(w, dt) {
+    if (!w.path || w.pathIndex >= w.path.length) {
+      if (w.state === 'returning') arriveHome(w);
+      else w.state = 'working';
+      return;
+    }
+    const target = w.path[w.pathIndex];
+    const d = Math.hypot(target.x - w.x, target.y - w.y);
+    if (d > .05) {
+      const sp = w.scared ? 1.1 : 2.25;
+      w.x += (target.x - w.x) / d * sp * dt;
+      w.y += (target.y - w.y) / d * sp * dt;
+    } else {
+      w.x = target.x; w.y = target.y; w.pathIndex++;
+      if (w.pathIndex >= w.path.length) {
+        if (w.state === 'returning') arriveHome(w);
+        else w.state = 'working';
+      }
+    }
+  }
+
   function finish(w) {
-    const c = map[w.job.y][w.job.x];
+    const c = map[w.job.targetY][w.job.targetX];
     if (w.job.type === 'chop') { c.t = T.GRASS; c.job = null; say('树障被清开，工人开始返回营火。'); }
     if (w.job.type === 'repair') { c.t = T.BRIDGE; c.job = null; say('断桥修复完成，工人开始返回营火。'); }
     if (w.job.type === 'camp') { c.t = T.CAMP; say('营火点亮，工人返回最近安全点。'); }
-    const home = nearestSafePoint(w.x, w.y);
-    w.job = { x: home.x, y: home.y, type: 'return' };
+    const homePath = findNearestSafePath(w);
+    if (!homePath) {
+      w.job = null; w.state = 'idle'; w.path = []; w.pathIndex = 0; w.progress = 0; w.scared = false;
+      say(`工人 ${w.id} 找不到返回路径，暂时原地待命。`);
+      return;
+    }
+    w.job = { type: 'return' };
+    w.path = homePath;
+    w.pathIndex = 1;
     w.state = 'returning';
     w.progress = 0;
   }
 
-  function nearestSafePoint(x, y) {
-    const points = [{ x: START.x, y: START.y, type: 'village' }];
+  function findNearestSafePath(w) {
+    const start = tileOf(w);
+    const points = [{ x: START.x, y: START.y }];
     for (let yy = 0; yy < H; yy++) for (let xx = 0; xx < W; xx++) {
-      if (map[yy][xx].t === T.CAMP) points.push({ x: xx, y: yy, type: 'camp' });
+      if (map[yy][xx].t === T.CAMP) points.push({ x: xx, y: yy });
     }
-    points.sort((a, b) => distance({x,y}, a) - distance({x,y}, b));
-    return points[0];
+    let best = null;
+    for (const p of points) {
+      const path = findPath(start, p);
+      if (path && (!best || path.length < best.length)) best = path;
+    }
+    return best;
+  }
+
+  function arriveHome(w) {
+    w.job = null; w.state = 'idle'; w.path = []; w.pathIndex = 0; w.progress = 0; w.scared = false;
+    say(`工人 ${w.id} 已返回安全点。`);
   }
 
   function safe(x, y) {
@@ -335,6 +408,7 @@
     frameStats.visible = cells.length;
     for (const c of cells) drawTile(c.x, c.y);
     drawZones();
+    drawWorkerPaths();
     workers.forEach(drawWorker);
     shades.forEach(drawShade);
     drawPlayer();
@@ -394,6 +468,23 @@
     pulses.forEach(p=>zones.push({x:p.x,y:p.y,r:2.5,c:'rgba(144,224,255,.22)'}));
     zones.forEach(z=>{ const p=iso(z.x,z.y); if (p.x < -150 || p.x > canvas.width + 150 || p.y < -150 || p.y > canvas.height + 150) return; ctx.fillStyle=z.c; ctx.beginPath(); ctx.ellipse(p.x,p.y,z.r*32,z.r*18,0,0,Math.PI*2); ctx.fill(); });
   }
+
+  function drawWorkerPaths() {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,241,184,.22)';
+    ctx.lineWidth = 2;
+    for (const w of workers) {
+      if (!w.path || w.pathIndex >= w.path.length) continue;
+      ctx.beginPath();
+      const first = iso(w.x, w.y); ctx.moveTo(first.x, first.y - 6);
+      for (let i = w.pathIndex; i < w.path.length; i++) {
+        const p = iso(w.path[i].x, w.path[i].y); ctx.lineTo(p.x, p.y - 6);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   function drawPlayer(){
     const p=iso(player.x,player.y);
     const flash = player.hitFlash > 0 && Math.floor(player.hitFlash * 20) % 2 === 0;
@@ -407,6 +498,7 @@
     const p=iso(w.x,w.y);
     ctx.fillStyle=w.scared?'#ffd0d0':'#d5c59c'; ctx.beginPath(); ctx.arc(p.x,p.y-20,6,0,Math.PI*2); ctx.fill();
     ctx.fillStyle=w.scared?'#823f3f':'#66704e'; ctx.fillRect(p.x-6,p.y-14,12,15);
+    if(w.state==='moving') label(p.x,p.y-38,'前往');
     if(w.state==='working') label(p.x,p.y-36,Math.ceil(4.2-w.progress));
     if(w.state==='returning') label(p.x,p.y-38,'返回');
     if(w.scared) label(p.x,p.y-54,'!');
@@ -440,11 +532,13 @@
   }
 
   function drawPanel(){
-    const idle=workers.filter(w=>!w.lost&&w.state==='idle').length, returning=workers.filter(w=>!w.lost&&w.state==='returning').length;
+    const idle=workers.filter(w=>!w.lost&&w.state==='idle').length;
+    const moving=workers.filter(w=>!w.lost&&w.state==='moving').length;
+    const returning=workers.filter(w=>!w.lost&&w.state==='returning').length;
     const alive=workers.filter(w=>!w.lost).length, lost=workers.length-alive;
     const ph=night()?'夜晚':phase()==='dusk'?'黄昏':'白天';
     const playerState = gameOver ? '游戏结束' : safe(player.x, player.y) ? '安全圈内' : night() ? '危险：可被追击' : '安全';
-    panel.innerHTML=`<h1>《看海去》GPT_DEMO gpt.3</h1>地图：<b>${W}×${H}</b>　本帧绘制：<b>${frameStats.visible}</b> / ${frameStats.total}<br>辉石：<b>${stones}</b>　玩家：<b>${playerState}</b><br>工人：<b>${idle}/${alive}</b> 空闲　返回中：<b>${returning}</b>　失踪：<b>${lost}</b><br>第 ${dayNo} 天 · ${ph}<br>目标：${ended?'<b>已抵达蓝色信标</b>':'收集辉石，派工开路，抵达蓝色信标'}<div class="small">黑林影会攻击安全圈外玩家；有辉石则掉落 1–3 个，0 辉石再被攻击则失败。工人完成任务后必须返回最近营火 / 部落，抵达后才空闲。</div>`;
+    panel.innerHTML=`<h1>《看海去》GPT_DEMO gpt.4</h1>地图：<b>${W}×${H}</b>　本帧绘制：<b>${frameStats.visible}</b> / ${frameStats.total}<br>辉石：<b>${stones}</b>　玩家：<b>${playerState}</b><br>工人：<b>${idle}/${alive}</b> 空闲　前往：<b>${moving}</b>　返回：<b>${returning}</b>　失踪：<b>${lost}</b><br>第 ${dayNo} 天 · ${ph}<br>目标：${ended?'<b>已抵达蓝色信标</b>':'收集辉石，派最近工人沿路开路，抵达蓝色信标'}<div class="small">派工会选择可通行路径最短的空闲工人。工人不会穿越森林、河流、岩石；砍树和修桥会站在相邻可通行格工作。</div>`;
   }
 
   window.addEventListener('keydown', e => { keys[e.key] = true; if (e.key === ' ') throwStone(); if (e.key.toLowerCase() === 'r') reset(); });
