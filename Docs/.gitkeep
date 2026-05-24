@@ -1,0 +1,15 @@
+# Docs
+
+该目录用于保存更细的设计资料、系统说明、竞品研究和参考内容。
+
+建议子目录：
+
+```text
+Docs/
+├── GameDesign/
+├── SystemDesign/
+├── Economy/
+├── UX/
+├── Narrative/
+└── References/
+```
