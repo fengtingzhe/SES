@@ -1,21 +1,191 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>《看海去》GPT_DEMO gpt.6.2</title><style>html,body{margin:0;height:100%;overflow:hidden;background:#081012;color:#eaf3ef;font:14px system-ui}canvas{display:block;width:100vw;height:100vh;cursor:crosshair}.p,.h,.t{position:fixed;background:rgba(7,16,17,.72);border:1px solid rgba(218,239,230,.16);border-radius:16px;padding:12px 14px;line-height:1.65;backdrop-filter:blur(8px)}.p{left:18px;top:16px;width:430px}.h{right:18px;bottom:16px;max-width:600px;color:#c8d7d1}.t{left:50%;top:20px;transform:translateX(-50%);border-radius:999px;background:#edf8f1;color:#173033;font-weight:700;opacity:0;transition:.18s}.show{opacity:1}b{color:#fff1b8}</style></head><body><canvas id="c"></canvas><div class="p" id="p"></div><div class="h"><b>操作</b>：WASD/方向键移动；点击树障/断桥/空地派工；Space 投掷辉石光圈；R 重开。<br><b>gpt.6.2</b>：修复完成任务坐标反置问题；砍树后树会消失，修桥后桥可通过。</div><div class="t" id="toast"></div><script>
-(()=>{const C=document.getElementById('c'),X=C.getContext('2d'),P=document.getElementById('p'),Tt=document.getElementById('toast'),W=52,H=44,TW=68,TH=36,S={x:4,y:22},G={x:47,y:22},DAY=92,TT={G:0,F:1,W:2,B:3,BR:4,C:5,V:6,ST:7,GO:8,R:9};let M,pl,ws,ms,ps,stone,gt,day,k,mt,cam,end,over,tm,fs={v:0,total:W*H};
-const R=n=>Math.floor(Math.random()*n),cl=(v,a,b)=>Math.max(a,Math.min(b,v)),D=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y),K=(x,y)=>x+','+y,cell=(x,y)=>M[y]?.[x],tile=e=>({x:Math.round(e.x),y:Math.round(e.y)});function say(s){Tt.textContent=s;Tt.classList.add('show');clearTimeout(tm);tm=setTimeout(()=>Tt.classList.remove('show'),1800)}function size(){C.width=innerWidth;C.height=innerHeight}addEventListener('resize',size);
-function reset(){M=Array.from({length:H},()=>Array.from({length:W},()=>({t:TT.F,seen:0,job:null,val:0})));makeMap();pl={x:S.x,y:S.y,sp:4.35,iv:0,fl:0};ws=[0,1,2,3].map(i=>({id:i+1,x:S.x,y:S.y-1+i,s:'idle',job:null,path:[],pi:0,prog:0,lost:0,sc:0}));ms=[];ps=[];stone=5;gt=9;day=1;k={};cam={x:0,y:0};end=over=0;reveal();say('gpt.6.2：砍树和修桥目标坐标已修复')}
-function open(x,y){if(cell(x,y)){cell(x,y).t=TT.G;cell(x,y).job=null;cell(x,y).val=0}}function makeMap(){let y=S.y,path=[];for(let x=S.x;x<=G.x;x++){if(x>S.x+2&&x<G.x-2)y=cl(y+R(3)-1,7,H-8);path.push({x,y});open(x,y);open(x,y-1);open(x,y+1);if(x%5==0)open(x,y+(Math.random()<.5?2:-2))}for(let i=0;i<7;i++){let a=path[6+R(path.length-12)],x=a.x,y=a.y,dir=Math.random()<.5?-1:1;for(let n=0;n<5+R(9);n++){y=cl(y+dir*(Math.random()<.7),4,H-5);x=cl(x+R(3)-1,3,W-4);open(x,y);open(x+1,y)}}river(17+R(3));river(34+R(3));for(let i=0;i<45;i++){let x=6+R(W-12),y=5+R(H-10),c=cell(x,y);if(c.t==TT.G&&Math.random()<.55){c.t=TT.F;c.job='chop'}}for(let i=0;i<55;i++){let x=5+R(W-10),y=4+R(H-8),c=cell(x,y);if(c.t==TT.F&&Math.random()<.42)c.t=TT.R}for(let i=0;i<38;i++){let x=5+R(W-10),y=4+R(H-8),c=cell(x,y);if(c.t==TT.G){c.t=TT.ST;c.val=2}}cell(S.x,S.y).t=TT.V;cell(G.x,G.y).t=TT.GO}
-function river(rx){for(let y=2;y<H-2;y++){let c=cell(rx,y);c.t=TT.W;c.job=null;c.val=0}let by=S.y;for(let y=4;y<H-4;y++)if(cell(rx-1,y).t==TT.G&&cell(rx+1,y).t==TT.G){by=y;break}let c=cell(rx,by);c.t=TT.B;c.job='repair'}
-function pass(x,y){let c=cell(x,y);return c&&[TT.G,TT.BR,TT.C,TT.V,TT.ST,TT.GO].includes(c.t)}function adj(x,y){return[{x:x+1,y},{x:x-1,y},{x,y:y+1},{x,y:y-1}].filter(p=>pass(p.x,p.y))}function path(a,b){let sx=Math.round(a.x),sy=Math.round(a.y),gx=Math.round(b.x),gy=Math.round(b.y);if(!pass(sx,sy)||!pass(gx,gy))return null;if(sx==gx&&sy==gy)return[{x:sx,y:sy}];let q=[{x:sx,y:sy}],pre=new Map([[K(sx,sy),null]]),dirs=[[1,0],[-1,0],[0,1],[0,-1]];for(let h=0;h<q.length;h++){let u=q[h];for(let [dx,dy] of dirs){let nx=u.x+dx,ny=u.y+dy,kk=K(nx,ny);if(pre.has(kk)||!pass(nx,ny))continue;pre.set(kk,u);if(nx==gx&&ny==gy){let p=[{x:nx,y:ny}],b=u;while(b){p.push({x:b.x,y:b.y});b=pre.get(K(b.x,b.y))}return p.reverse()}q.push({x:nx,y:ny})}}return null}
-const iso=(x,y)=>({x:(x-y)*TW/2+C.width/2+cam.x,y:(x+y)*TH/2+70+cam.y}),from=(sx,sy)=>{let x0=sx-C.width/2-cam.x,y0=sy-70-cam.y;return{x:Math.floor((y0/(TH/2)+x0/(TW/2))/2),y:Math.floor((y0/(TH/2)-x0/(TW/2))/2)}};function phase(){let p=(gt%DAY)/DAY;return p>.66||p<.08?'night':p>.52?'dusk':'day'}const night=()=>phase()=='night';
-function upd(dt){gt+=dt;if(gt>day*DAY)day++;pl.iv=Math.max(0,pl.iv-dt);pl.fl=Math.max(0,pl.fl-dt);if(!over){move(dt);pickup();reveal();updW(dt);spawn();updM(dt)}ps=ps.filter(p=>(p.life-=dt)>0);let q=iso(pl.x,pl.y);cam.x+=(C.width/2-q.x)*.045;cam.y+=(C.height/2-q.y)*.045}
-function move(dt){let dx=(k.d||k.ArrowRight?1:0)-(k.a||k.ArrowLeft?1:0),dy=(k.s||k.ArrowDown?1:0)-(k.w||k.ArrowUp?1:0),l=Math.hypot(dx,dy)||1,nx=pl.x+dx/l*pl.sp*dt,ny=pl.y+dy/l*pl.sp*dt;if(pass(Math.round(nx),Math.round(pl.y)))pl.x=nx;if(pass(Math.round(pl.x),Math.round(ny)))pl.y=ny;pl.x=cl(pl.x,0,W-1);pl.y=cl(pl.y,0,H-1)}
-function pickup(){let c=cell(Math.round(pl.x),Math.round(pl.y));if(!c)return;if(c.t==TT.ST){let g=c.val||1;c.t=TT.G;c.val=0;stone+=g;say(g>1?'获得辉石簇 +2':'捡回掉落辉石 +1')}if(c.t==TT.GO&&!end){end=1;say('抵达蓝色信标：远处传来像潮水一样的风。')}}function reveal(){for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(D({x,y},pl)<5.2||D({x,y},S)<4)cell(x,y).seen=1}
-function click(x,y){if(over)return;let c=cell(x,y);if(!c)return;let cost=0,j=null,dests=[];if(c.job=='chop'){cost=1;j='chop';dests=adj(x,y)}else if(c.job=='repair'){cost=2;j='repair';dests=adj(x,y)}else if(c.t==TT.G&&c.seen){cost=2;j='camp';dests=[{x,y}]}else return say('这里暂时不能派工。');if(stone<cost)return say('辉石不足。');if(!dests.length)return say('没有可抵达的工作位置，需要先开路。');let ch=bestW(dests);if(!ch)return say('没有可调度工人，或没有可通行路径。');stone-=cost;Object.assign(ch.w,{job:{type:j,tx:x,ty:y},path:ch.p,pi:1,s:'moving',prog:0});say(`工人 ${ch.w.id} 路径最近，已出发。`)}function bestW(ds){let b=null;for(let w of ws){if(w.lost||!['idle','returning'].includes(w.s))continue;for(let d of ds){let p=path(tile(w),d);if(p&&(!b||p.length<b.p.length))b={w,d,p}}}return b}
-function updW(dt){for(let w of ws){if(w.lost||!w.job)continue;w.sc=night()&&!safe(w.x,w.y);if(w.s=='moving'||w.s=='returning')walk(w,dt);else if(w.s=='working'){w.prog+=dt*(w.sc?.35:1);if(w.prog>=4.2)finish(w)}}}function walk(w,dt){if(!w.path||w.pi>=w.path.length){w.s=='returning'?home(w):w.s='working';return}let g=w.path[w.pi],d=Math.hypot(g.x-w.x,g.y-w.y);if(d>.05){let sp=w.sc?1.1:2.25;w.x+=(g.x-w.x)/d*sp*dt;w.y+=(g.y-w.y)/d*sp*dt}else{w.x=g.x;w.y=g.y;w.pi++;if(w.pi>=w.path.length)w.s=='returning'?home(w):w.s='working'}}function finish(w){let c=cell(w.job.tx,w.job.ty);if(w.job.type=='chop'){c.t=TT.G;c.job=null;c.val=0;say('树障被清开，工人开始返回营火。')}if(w.job.type=='repair'){c.t=TT.BR;c.job=null;c.val=0;say('断桥修复完成，工人开始返回营火。')}if(w.job.type=='camp'){c.t=TT.C;c.val=0;say('营火点亮，工人返回最近安全点。')}let hp=homePath(w);if(!hp)return home(w);w.job={type:'return'};w.path=hp;w.pi=1;w.s='returning';w.prog=0}function homePath(w){let pts=[S];for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(cell(x,y).t==TT.C)pts.push({x,y});let b=null;for(let p of pts){let pp=path(tile(w),p);if(pp&&(!b||pp.length<b.length))b=pp}return b}function home(w){Object.assign(w,{job:null,s:'idle',path:[],pi:0,prog:0,sc:0});say(`工人 ${w.id} 已返回安全点。`)}
-function safe(x,y){if(D({x,y},S)<3.2)return 1;for(let yy=cl(Math.floor(y-4),0,H-1);yy<=cl(Math.ceil(y+4),0,H-1);yy++)for(let xx=cl(Math.floor(x-4),0,W-1);xx<=cl(Math.ceil(x+4),0,W-1);xx++)if(cell(xx,yy).t==TT.C&&D({x,y},{x:xx,y:yy})<3.1)return 1;return ps.some(p=>D({x,y},p)<2.5)}function throwS(){if(over)return;if(stone<=0)return say('辉石不足，无法投掷。');stone--;ps.push({x:pl.x,y:pl.y,life:12});say('辉石光圈展开，黑林影无法进入。')}
-function spawn(){if(!night()||ms.length>=5||Math.random()>.014)return;let tar=[];ws.filter(w=>!w.lost&&!safe(w.x,w.y)).forEach(w=>tar.push({type:'w',id:w.id,x:w.x,y:w.y}));if(!end&&!over&&!safe(pl.x,pl.y)&&pl.iv<=0)tar.push({type:'p',id:0,x:pl.x,y:pl.y});if(!tar.length)return;let a=tar[R(tar.length)];ms.push({x:a.x+(Math.random()<.5?-5:5),y:a.y+R(7)-3,type:a.type,id:a.id})}function target(m){if(m.type=='w'){let w=ws.find(w=>w.id==m.id&&!w.lost&&!safe(w.x,w.y));return w&&{x:w.x,y:w.y}}return !end&&!over&&!safe(pl.x,pl.y)&&pl.iv<=0?{x:pl.x,y:pl.y}:null}function updM(dt){for(let m of ms){let g=target(m);if(!g||!night()){m.dead=1;continue}let d=Math.hypot(g.x-m.x,g.y-m.y);if(d>.05){m.x+=(g.x-m.x)/d*1.65*dt;m.y+=(g.y-m.y)/d*1.65*dt}if(d<.32){if(m.type=='w'){let w=ws.find(w=>w.id==m.id&&!w.lost);if(w){w.lost=1;w.s='lost';say(`工人 ${w.id} 被黑林影拖入森林。`)}}else hit();m.dead=1}}ms=ms.filter(m=>!m.dead)}function hit(){if(pl.iv>0||over)return;pl.iv=1.7;pl.fl=.45;if(stone>0){let n=Math.min(stone,1+R(3));stone-=n;drop(n);say(`你被黑林影袭击，掉落 ${n} 个辉石！`)}else{over=1;say('辉石耗尽，你被黑林影拖入森林。旅程中断。')}}function drop(n){let cx=Math.round(pl.x),cy=Math.round(pl.y),a=[];for(let r=1;r<=3;r++){for(let y=cy-r;y<=cy+r;y++)for(let x=cx-r;x<=cx+r;x++){let c=cell(x,y);if(c&&c.t==TT.G&&c.seen)a.push({x,y})}if(a.length>=n)break}for(let i=0;i<n&&a.length;i++){let j=R(a.length),p=a.splice(j,1)[0],c=cell(p.x,p.y);c.t=TT.ST;c.val=1}}
-function draw(){bg();let cs=vis();fs.v=cs.length;cs.forEach(v=>drawTile(v.x,v.y));zones();paths();ws.forEach(dw);ms.forEach(dm);dp();overlay();mini();hud()}function vis(){let a=[],m=120;for(let y=0;y<H;y++)for(let x=0;x<W;x++){let p=iso(x,y);if(p.x>-m&&p.x<C.width+m&&p.y>-m&&p.y<C.height+m)a.push({x,y,o:x+y})}return a.sort((a,b)=>a.o-b.o)}function bg(){let g=X.createLinearGradient(0,0,0,C.height);g.addColorStop(0,night()?'#071012':phase()=='dusk'?'#18272a':'#162d2e');g.addColorStop(1,night()?'#0d1214':'#18241f');X.fillStyle=g;X.fillRect(0,0,C.width,C.height)}function dia(p,col,st){X.beginPath();X.moveTo(p.x,p.y-TH/2);X.lineTo(p.x+TW/2,p.y);X.lineTo(p.x,p.y+TH/2);X.lineTo(p.x-TW/2,p.y);X.closePath();X.fillStyle=col;X.fill();if(st){X.strokeStyle=st;X.stroke()}}
-function drawTile(x,y){let c=cell(x,y),p=iso(x,y);if(!c.seen)return dia(p,'#101817','rgba(255,255,255,.025)');let cols=['#355945','#173226','#213f50','#67462e','#785535','#42583b','#5e6040','#42695d','#315b76','#26312d'];dia(p,cols[c.t],mt&&mt.x==x&&mt.y==y?'rgba(255,245,180,.8)':'rgba(255,255,255,.055)');if(c.t==TT.F)tree(p.x,p.y-8,c.job);if(c.t==TT.R)rock(p.x,p.y-6);if(c.t==TT.ST)stn(p.x,p.y-8,c.val||1);if(c.t==TT.C)camp(p.x,p.y-3);if(c.t==TT.V)vill(p.x,p.y-4);if(c.t==TT.B)lab(p.x,p.y-30,'修桥 2');if(c.t==TT.GO)goal(p.x,p.y-18);if(c.job=='chop')lab(p.x,p.y-46,'砍树 1')}function tree(x,y,j){X.fillStyle='#14221d';X.fillRect(x-4,y+8,8,17);X.fillStyle=j?'#294b36':'#183125';X.beginPath();X.moveTo(x,y-30);X.lineTo(x+18,y+12);X.lineTo(x-18,y+12);X.closePath();X.fill()}function rock(x,y){X.fillStyle='#4b5850';X.beginPath();X.ellipse(x,y+5,15,9,0,0,7);X.fill()}function stn(x,y,v){X.fillStyle='#98d6ca';X.beginPath();X.arc(x-(v>=2?5:0),y,7,0,7);X.fill();X.fillStyle='#ecfffb';X.beginPath();X.arc(x-(v>=2?7:2),y-3,2,0,7);X.fill();if(v>=2){X.fillStyle='#8ac8bd';X.beginPath();X.arc(x+7,y+4,6,0,7);X.fill();X.fillStyle='#ecfffb';X.beginPath();X.arc(x+5,y+1,2,0,7);X.fill()}}function camp(x,y){X.fillStyle='rgba(255,168,76,.9)';X.beginPath();X.arc(x,y,9,0,7);X.fill();X.fillStyle='#fff0a6';X.beginPath();X.arc(x,y-3,4,0,7);X.fill()}function vill(x,y){X.fillStyle='#624632';X.fillRect(x-16,y-10,32,20);X.fillStyle='#a17752';X.beginPath();X.moveTo(x-22,y-10);X.lineTo(x,y-29);X.lineTo(x+22,y-10);X.closePath();X.fill();lab(x,y-42,'部落')}function goal(x,y){X.strokeStyle='#9de8ff';X.lineWidth=3;X.beginPath();X.moveTo(x,y+24);X.lineTo(x,y-18);X.stroke();X.fillStyle='#85ddff';X.beginPath();X.arc(x,y-23,10,0,7);X.fill();lab(x,y-48,'蓝色信标')}function rr(x,y,w,h,r){X.beginPath();X.moveTo(x+r,y);X.arcTo(x+w,y,x+w,y+h,r);X.arcTo(x+w,y+h,x,y+h,r);X.arcTo(x,y+h,x,y,r);X.arcTo(x,y,x+w,y,r);X.closePath()}function lab(x,y,s){X.font='12px system-ui';let w=X.measureText(s).width+14;rr(x-w/2,y-13,w,23,11);X.fillStyle='rgba(7,15,17,.76)';X.fill();X.fillStyle='#eaf3ef';X.textAlign='center';X.fillText(s,x,y+3)}
-function zones(){let z=[{x:S.x,y:S.y,r:3.2,c:'rgba(255,215,124,.16)'}];for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(cell(x,y).t==TT.C)z.push({x,y,r:3.1,c:'rgba(255,180,82,.18)'});ps.forEach(p=>z.push({x:p.x,y:p.y,r:2.5,c:'rgba(144,224,255,.22)'}));for(let a of z){let p=iso(a.x,a.y);if(p.x<-150||p.x>C.width+150||p.y<-150||p.y>C.height+150)continue;X.fillStyle=a.c;X.beginPath();X.ellipse(p.x,p.y,a.r*32,a.r*18,0,0,7);X.fill()}}function paths(){X.save();X.strokeStyle='rgba(255,241,184,.22)';X.lineWidth=2;for(let w of ws){if(!w.path||w.pi>=w.path.length)continue;X.beginPath();let p=iso(w.x,w.y);X.moveTo(p.x,p.y-6);for(let i=w.pi;i<w.path.length;i++){p=iso(w.path[i].x,w.path[i].y);X.lineTo(p.x,p.y-6)}X.stroke()}X.restore()}function dp(){let p=iso(pl.x,pl.y),f=pl.fl>0&&Math.floor(pl.fl*20)%2==0;X.fillStyle=f?'#fff':'#f0cfa3';X.beginPath();X.arc(p.x,p.y-26,7,0,7);X.fill();X.fillStyle=f?'#eee':'#b66f48';X.fillRect(p.x-7,p.y-20,14,20);if(pl.iv>0)lab(p.x,p.y-48,'受击')}function dw(w){if(w.lost)return;let p=iso(w.x,w.y);X.fillStyle=w.sc?'#ffd0d0':'#d5c59c';X.beginPath();X.arc(p.x,p.y-20,6,0,7);X.fill();X.fillStyle=w.sc?'#823f3f':'#66704e';X.fillRect(p.x-6,p.y-14,12,15);if(w.s=='moving')lab(p.x,p.y-38,'前往');if(w.s=='working')lab(p.x,p.y-36,Math.ceil(4.2-w.prog));if(w.s=='returning')lab(p.x,p.y-38,'返回');if(w.sc)lab(p.x,p.y-54,'!')}function dm(m){let p=iso(m.x,m.y);X.fillStyle=m.type=='p'?'rgba(18,0,0,.82)':'rgba(0,0,0,.76)';X.beginPath();X.ellipse(p.x,p.y-8,19,12,0,0,7);X.fill();X.fillStyle='#dff4ff';X.fillRect(p.x-6,p.y-13,3,3);X.fillRect(p.x+4,p.y-13,3,3)}function overlay(){X.fillStyle=`rgba(2,8,18,${night()?.42:phase()=='dusk'?.2:.05})`;X.fillRect(0,0,C.width,C.height);if(over){X.fillStyle='rgba(0,0,0,.58)';X.fillRect(0,0,C.width,C.height);X.fillStyle='#fff1b8';X.textAlign='center';X.font='bold 34px system-ui';X.fillText('旅程中断',C.width/2,C.height/2-14);X.fillStyle='#d9e8df';X.font='16px system-ui';X.fillText('辉石耗尽，你被黑林影拖入森林。按 R 重新开始。',C.width/2,C.height/2+22)}}function mini(){let s=128,x0=C.width-s-22,y0=18;X.fillStyle='rgba(7,16,17,.62)';rr(x0-8,y0-8,s+16,s+16,12);X.fill();for(let y=0;y<H;y++)for(let x=0;x<W;x++){let c=cell(x,y);if(!c.seen)continue;X.fillStyle=c.t==TT.W?'#315b76':c.t==TT.C?'#e59e54':c.t==TT.GO?'#8ee6ff':c.t==TT.ST?(c.val>=2?'#b6eee4':'#78bbb0'):'#496d54';X.fillRect(x0+x/W*s,y0+y/H*s,Math.ceil(s/W),Math.ceil(s/H))}X.fillStyle='#fff1b8';X.beginPath();X.arc(x0+pl.x/W*s,y0+pl.y/H*s,3,0,7);X.fill()}function hud(){let idle=ws.filter(w=>!w.lost&&w.s=='idle').length,mov=ws.filter(w=>!w.lost&&w.s=='moving').length,ret=ws.filter(w=>!w.lost&&w.s=='returning').length,alive=ws.filter(w=>!w.lost).length,lost=ws.length-alive,ph=night()?'夜晚':phase()=='dusk'?'黄昏':'白天',pss=over?'游戏结束':safe(pl.x,pl.y)?'安全圈内':night()?'危险：可被追击':'安全';P.innerHTML=`<h1>《看海去》GPT_DEMO gpt.6.2</h1>地图：<b>${W}×${H}</b>　本帧绘制：<b>${fs.v}</b> / ${fs.total}<br>辉石：<b>${stone}</b>　玩家：<b>${pss}</b><br>工人：<b>${idle}/${alive}</b> 空闲　前往：<b>${mov}</b>　返回：<b>${ret}</b>　失踪：<b>${lost}</b><br>第 ${day} 天 · ${ph}<br>目标：${end?'<b>已抵达蓝色信标</b>':'收集辉石，派最近工人沿路开路，抵达蓝色信标'}<div class="small">修复完成任务坐标：砍树会正确清除树障，修桥会正确生成可通行桥。辉石规则保持：辉石簇+2，单颗+1。</div>`}
-addEventListener('keydown',e=>{k[e.key]=1;if(e.key==' ')throwS();if(e.key.toLowerCase()=='r')reset()});addEventListener('keyup',e=>k[e.key]=0);C.addEventListener('mousemove',e=>mt=from(e.clientX,e.clientY));C.addEventListener('click',e=>{let q=from(e.clientX,e.clientY);click(q.x,q.y)});let last=performance.now();function loop(now){let dt=Math.min(.05,(now-last)/1000);last=now;upd(dt);draw();requestAnimationFrame(loop)}size();reset();loop(last)
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>《看海去》GPT_DEMO gpt.7</title>
+  <style>
+    html,body{margin:0;height:100%;overflow:hidden;background:#081012;color:#eaf3ef;font:14px system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    canvas{display:block;width:100vw;height:100vh;cursor:default}
+    .panel,.help,.toast{position:fixed;background:rgba(7,16,17,.74);border:1px solid rgba(218,239,230,.16);border-radius:16px;padding:12px 14px;line-height:1.65;backdrop-filter:blur(8px)}
+    .panel{left:18px;top:16px;width:450px}.help{right:18px;bottom:16px;max-width:640px;color:#c8d7d1}.toast{left:50%;top:20px;transform:translateX(-50%);border-radius:999px;background:#edf8f1;color:#173033;font-weight:700;opacity:0;transition:.18s;pointer-events:none}.show{opacity:1}b{color:#fff1b8}h1{margin:0 0 6px;font-size:17px}
+  </style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div class="panel" id="panel"></div>
+<div class="help">
+  <b>PC操作</b>：WASD / 方向键移动；<b>Space 互动</b>；R 重开。<br>
+  <b>gpt.7</b>：取消鼠标点击派工与 Space 投掷光圈。玩家需要靠近目标后按 Space 互动；营火只能在固定“旧火塘”点亮；怪物会抢夺掉落辉石。
+</div>
+<div class="toast" id="toast"></div>
+<script>
+(() => {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const panel = document.getElementById('panel');
+  const toast = document.getElementById('toast');
+  const W = 52, H = 44, TW = 68, TH = 36;
+  const START = { x: 4, y: 22 }, GOAL = { x: 47, y: 22 };
+  const DAY = 92;
+  const T = { GRASS:0, FOREST:1, WATER:2, BROKEN:3, BRIDGE:4, CAMP:5, VILLAGE:6, STONE:7, GOAL:8, ROCK:9, FIRE_SITE:10 };
+  let map, player, workers, monsters, stones, gameTime, dayNo, keys, camera, ended, gameOver, toastTimer, hovered;
+  let frameStats = { visible:0, total:W*H };
+
+  const rnd = n => Math.floor(Math.random()*n);
+  const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+  const dist = (a,b) => Math.hypot(a.x-b.x, a.y-b.y);
+  const keyOf = (x,y) => `${x},${y}`;
+  const cell = (x,y) => map[y]?.[x];
+  const tileOf = e => ({ x: Math.round(e.x), y: Math.round(e.y) });
+  const say = msg => { toast.textContent = msg; toast.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(()=>toast.classList.remove('show'),1800); };
+
+  function resize(){ canvas.width = innerWidth; canvas.height = innerHeight; }
+  addEventListener('resize', resize);
+
+  function reset(){
+    map = Array.from({length:H},()=>Array.from({length:W},()=>({t:T.FOREST,seen:false,job:null,val:0})));
+    makeMap();
+    player = { x:START.x, y:START.y, sp:4.35, inv:0, flash:0 };
+    workers = [0,1,2,3].map(i=>({id:i+1,x:START.x,y:START.y-1+i,state:'idle',job:null,path:[],pi:0,prog:0,lost:false,scared:false,carry:0}));
+    monsters = [];
+    stones = 5; gameTime = 9; dayNo = 1; keys = {}; camera = {x:0,y:0}; hovered = null; ended = false; gameOver = false;
+    reveal(); say('gpt.7：移动 + Space 互动。靠近目标再下达命令。');
+  }
+
+  function makeMap(){
+    let y = START.y; const mainPath = [];
+    for(let x=START.x;x<=GOAL.x;x++){
+      if(x>START.x+2 && x<GOAL.x-2) y = clamp(y + rnd(3)-1, 7, H-8);
+      mainPath.push({x,y}); open(x,y); open(x,y-1); open(x,y+1);
+      if(x%5===0) open(x, y + (Math.random()<.5?2:-2));
+    }
+    for(let i=0;i<7;i++){
+      const a = mainPath[6+rnd(mainPath.length-12)]; let x=a.x, yy=a.y, dir=Math.random()<.5?-1:1;
+      for(let n=0;n<5+rnd(9);n++){ yy=clamp(yy+dir*(Math.random()<.7?1:0),4,H-5); x=clamp(x+rnd(3)-1,3,W-4); open(x,yy); open(x+1,yy); }
+    }
+    river(17+rnd(3)); river(34+rnd(3));
+    // 固定旧火塘：主要放在远征路径和河流附近，用于节奏控制。
+    for (const idx of [8, 18, 28, 38]) {
+      const p = mainPath[Math.min(mainPath.length-1, idx)];
+      const c = cell(p.x, p.y);
+      if (c && c.t === T.GRASS) { c.t = T.FIRE_SITE; c.val = 0; c.job = 'camp'; }
+    }
+    for(let i=0;i<45;i++){ const x=6+rnd(W-12), yy=5+rnd(H-10), c=cell(x,yy); if(c.t===T.GRASS && Math.random()<.55){ c.t=T.FOREST; c.job='chop'; } }
+    for(let i=0;i<55;i++){ const x=5+rnd(W-10), yy=4+rnd(H-8), c=cell(x,yy); if(c.t===T.FOREST && Math.random()<.42){ c.t=T.ROCK; c.job=null; } }
+    for(let i=0;i<38;i++){ const x=5+rnd(W-10), yy=4+rnd(H-8), c=cell(x,yy); if(c.t===T.GRASS){ c.t=T.STONE; c.val=2; } }
+    cell(START.x,START.y).t=T.VILLAGE; cell(GOAL.x,GOAL.y).t=T.GOAL;
+  }
+  function open(x,y){ const c=cell(x,y); if(c){ c.t=T.GRASS; c.job=null; c.val=0; } }
+  function river(rx){ for(let y=2;y<H-2;y++){ const c=cell(rx,y); c.t=T.WATER; c.job=null; c.val=0; } let by=START.y; for(let y=4;y<H-4;y++) if(cell(rx-1,y).t===T.GRASS && cell(rx+1,y).t===T.GRASS){ by=y; break; } const c=cell(rx,by); c.t=T.BROKEN; c.job='repair'; }
+  function pass(x,y){ const c=cell(x,y); return c && [T.GRASS,T.BRIDGE,T.CAMP,T.VILLAGE,T.STONE,T.GOAL,T.FIRE_SITE].includes(c.t); }
+  function workAdjacent(x,y){ return [{x:x+1,y},{x:x-1,y},{x,y:y+1},{x,y:y-1}].filter(p=>pass(p.x,p.y)); }
+
+  function findPath(start, goal){
+    const sx=Math.round(start.x), sy=Math.round(start.y), gx=Math.round(goal.x), gy=Math.round(goal.y);
+    if(!pass(sx,sy)||!pass(gx,gy)) return null; if(sx===gx && sy===gy) return [{x:sx,y:sy}];
+    const q=[{x:sx,y:sy}], prev=new Map([[keyOf(sx,sy),null]]), dirs=[[1,0],[-1,0],[0,1],[0,-1]];
+    for(let head=0; head<q.length; head++){
+      const u=q[head];
+      for(const [dx,dy] of dirs){ const nx=u.x+dx, ny=u.y+dy, k=keyOf(nx,ny); if(prev.has(k)||!pass(nx,ny)) continue; prev.set(k,u); if(nx===gx&&ny===gy){ const path=[{x:nx,y:ny}]; let b=u; while(b){ path.push({x:b.x,y:b.y}); b=prev.get(keyOf(b.x,b.y)); } return path.reverse(); } q.push({x:nx,y:ny}); }
+    }
+    return null;
+  }
+
+  const iso = (x,y)=>({x:(x-y)*TW/2+canvas.width/2+camera.x, y:(x+y)*TH/2+70+camera.y});
+  const fromScreen = (sx,sy)=>{ const x0=sx-canvas.width/2-camera.x, y0=sy-70-camera.y; return {x:Math.floor((y0/(TH/2)+x0/(TW/2))/2), y:Math.floor((y0/(TH/2)-x0/(TW/2))/2)}; };
+  function phase(){ const p=(gameTime%DAY)/DAY; return p>.66||p<.08?'night':p>.52?'dusk':'day'; }
+  const isNight = ()=>phase()==='night';
+
+  function update(dt){
+    gameTime += dt; if(gameTime > dayNo*DAY) dayNo++;
+    player.inv = Math.max(0, player.inv-dt); player.flash = Math.max(0, player.flash-dt);
+    if(!gameOver){ move(dt); reveal(); updateHover(); updateWorkers(dt); spawnMonsters(); updateMonsters(dt); }
+    const p=iso(player.x,player.y); camera.x += (canvas.width/2-p.x)*.045; camera.y += (canvas.height/2-p.y)*.045;
+  }
+  function move(dt){ let dx=(keys.d||keys.ArrowRight?1:0)-(keys.a||keys.ArrowLeft?1:0), dy=(keys.s||keys.ArrowDown?1:0)-(keys.w||keys.ArrowUp?1:0), l=Math.hypot(dx,dy)||1; const nx=player.x+dx/l*player.sp*dt, ny=player.y+dy/l*player.sp*dt; if(pass(Math.round(nx),Math.round(player.y))) player.x=nx; if(pass(Math.round(player.x),Math.round(ny))) player.y=ny; player.x=clamp(player.x,0,W-1); player.y=clamp(player.y,0,H-1); }
+  function reveal(){ for(let y=0;y<H;y++) for(let x=0;x<W;x++) if(dist({x,y},player)<5.2 || dist({x,y},START)<4) cell(x,y).seen=true; }
+
+  function updateHover(){ hovered = findInteractable(false); }
+  function findInteractable(verbose){
+    const px=Math.round(player.x), py=Math.round(player.y), candidates=[];
+    for(let y=py-2;y<=py+2;y++) for(let x=px-2;x<=px+2;x++){
+      const c=cell(x,y); if(!c || !c.seen) continue; const d=dist(player,{x,y}); if(d>1.65) continue;
+      let pri=99, action=null, label='';
+      if(c.t===T.STONE){ pri=1; action='pickup'; label=c.val>=2?'拾取辉石簇 +2':'拾取散落辉石 +1'; }
+      else if(c.t===T.GOAL){ pri=2; action='goal'; label='触碰蓝色信标'; }
+      else if(c.job==='chop'){ pri=3; action='chop'; label='砍树 1'; }
+      else if(c.job==='repair'){ pri=4; action='repair'; label='修桥 2'; }
+      else if(c.t===T.FIRE_SITE){ pri=5; action='camp'; label='点亮旧火塘 2'; }
+      if(action) candidates.push({x,y,d,pri,action,label});
+    }
+    candidates.sort((a,b)=>a.pri-b.pri || a.d-b.d);
+    if(!candidates[0] && verbose) say('附近没有可互动目标。');
+    return candidates[0] || null;
+  }
+  function interact(){
+    if(gameOver) return; const it=findInteractable(true); if(!it) return; const c=cell(it.x,it.y);
+    if(it.action==='pickup'){ const gain=c.val||1; c.t=T.GRASS; c.val=0; stones+=gain; say(gain>1?'获得辉石簇 +2':'捡回散落辉石 +1'); return; }
+    if(it.action==='goal'){ ended=true; say('抵达蓝色信标：远处传来像潮水一样的风。'); return; }
+    let cost=0, jobType=null, dests=[];
+    if(it.action==='chop'){ cost=1; jobType='chop'; dests=workAdjacent(it.x,it.y); }
+    if(it.action==='repair'){ cost=2; jobType='repair'; dests=workAdjacent(it.x,it.y); }
+    if(it.action==='camp'){ cost=2; jobType='camp'; dests=[{x:it.x,y:it.y}]; }
+    if(stones<cost) return say('辉石不足。'); if(!dests.length) return say('没有可抵达的工作位置，需要先开路。');
+    const choice=bestWorker(dests); if(!choice) return say('没有可调度工人，或没有可通行路径。');
+    stones-=cost; Object.assign(choice.w,{job:{type:jobType,tx:it.x,ty:it.y},path:choice.path,pi:1,state:'moving',prog:0,carry:cost}); say(`工人 ${choice.w.id} 携带 ${cost} 个辉石出发。`);
+  }
+  function bestWorker(dests){ let best=null; for(const w of workers){ if(w.lost || !['idle','returning'].includes(w.state)) continue; for(const d of dests){ const p=findPath(tileOf(w),d); if(p && (!best || p.length<best.path.length)) best={w,d,path:p}; } } return best; }
+
+  function updateWorkers(dt){ for(const w of workers){ if(w.lost || !w.job) continue; w.scared=isNight() && !safe(w.x,w.y); if(w.state==='moving'||w.state==='returning') walkWorker(w,dt); else if(w.state==='working'){ w.prog += dt*(w.scared?.35:1); if(w.prog>=4.2) finishWork(w); } } }
+  function walkWorker(w,dt){ if(!w.path || w.pi>=w.path.length){ w.state==='returning'?arriveHome(w):w.state='working'; return; } const g=w.path[w.pi], d=Math.hypot(g.x-w.x,g.y-w.y); if(d>.05){ const sp=w.scared?1.1:2.25; w.x+=(g.x-w.x)/d*sp*dt; w.y+=(g.y-w.y)/d*sp*dt; } else { w.x=g.x; w.y=g.y; w.pi++; if(w.pi>=w.path.length) w.state==='returning'?arriveHome(w):w.state='working'; } }
+  function finishWork(w){ const c=cell(w.job.tx,w.job.ty); if(w.job.type==='chop'){ c.t=T.GRASS; c.job=null; c.val=0; say('树障被清开，工人开始返回。'); } if(w.job.type==='repair'){ c.t=T.BRIDGE; c.job=null; c.val=0; say('断桥修复完成，工人开始返回。'); } if(w.job.type==='camp'){ c.t=T.CAMP; c.job=null; c.val=0; say('旧火塘被点亮，形成安全区。'); } w.carry=0; const hp=homePath(w); if(!hp) return arriveHome(w); w.job={type:'return'}; w.path=hp; w.pi=1; w.state='returning'; w.prog=0; }
+  function homePath(w){ const pts=[START]; for(let y=0;y<H;y++) for(let x=0;x<W;x++) if(cell(x,y).t===T.CAMP) pts.push({x,y}); let best=null; for(const p of pts){ const pp=findPath(tileOf(w),p); if(pp && (!best || pp.length<best.length)) best=pp; } return best; }
+  function arriveHome(w){ Object.assign(w,{job:null,state:'idle',path:[],pi:0,prog:0,scared:false,carry:0}); say(`工人 ${w.id} 已返回安全点。`); }
+  function safe(x,y){ if(dist({x,y},START)<3.2) return true; for(let yy=clamp(Math.floor(y-4),0,H-1); yy<=clamp(Math.ceil(y+4),0,H-1); yy++) for(let xx=clamp(Math.floor(x-4),0,W-1); xx<=clamp(Math.ceil(x+4),0,W-1); xx++) if(cell(xx,yy).t===T.CAMP && dist({x,y},{x:xx,y:yy})<3.1) return true; return false; }
+
+  function droppedStones(){ const arr=[]; for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const c=cell(x,y); if(c.t===T.STONE && c.val===1 && c.seen && !safe(x,y)) arr.push({x,y}); } return arr; }
+  function spawnMonsters(){ if(!isNight() || monsters.length>=5 || Math.random()>.014) return; const targets=[]; droppedStones().forEach(s=>targets.push({type:'stone',x:s.x,y:s.y})); workers.filter(w=>!w.lost&&!safe(w.x,w.y)).forEach(w=>targets.push({type:'worker',id:w.id,x:w.x,y:w.y})); if(!ended&&!gameOver&&!safe(player.x,player.y)&&player.inv<=0) targets.push({type:'player',x:player.x,y:player.y}); if(!targets.length) return; const t=targets[rnd(targets.length)]; monsters.push({x:t.x+(Math.random()<.5?-5:5),y:t.y+rnd(7)-3,target:t}); }
+  function monsterTarget(m){
+    if(m.target.type==='stone'){ const c=cell(Math.round(m.target.x),Math.round(m.target.y)); return c && c.t===T.STONE && c.val===1 ? {x:m.target.x,y:m.target.y} : null; }
+    if(m.target.type==='worker'){ const w=workers.find(w=>w.id===m.target.id && !w.lost && !safe(w.x,w.y)); return w?{x:w.x,y:w.y}:null; }
+    if(!ended&&!gameOver&&!safe(player.x,player.y)&&player.inv<=0) return {x:player.x,y:player.y};
+    return null;
+  }
+  function updateMonsters(dt){ for(const m of monsters){ const g=monsterTarget(m); if(!g || !isNight()){ m.dead=true; continue; } const d=Math.hypot(g.x-m.x,g.y-m.y); if(d>.05){ m.x+=(g.x-m.x)/d*1.65*dt; m.y+=(g.y-m.y)/d*1.65*dt; } if(d<.35){ if(m.target.type==='stone'){ const c=cell(Math.round(g.x),Math.round(g.y)); if(c && c.t===T.STONE && c.val===1){ c.t=T.GRASS; c.val=0; say('黑林影捡走了一颗散落辉石。'); } m.dead=true; } else if(m.target.type==='worker'){ hitWorker(m.target.id); m.dead=true; } else { hitPlayer(); m.dead=true; } } } monsters=monsters.filter(m=>!m.dead); }
+  function dropAt(x,y,count){ const spots=[]; const cx=Math.round(x), cy=Math.round(y); for(let r=1;r<=3;r++){ for(let yy=cy-r;yy<=cy+r;yy++) for(let xx=cx-r;xx<=cx+r;xx++){ const c=cell(xx,yy); if(c&&c.t===T.GRASS&&c.seen) spots.push({x:xx,y:yy}); } if(spots.length>=count) break; } for(let i=0;i<count&&spots.length;i++){ const j=rnd(spots.length), p=spots.splice(j,1)[0], c=cell(p.x,p.y); c.t=T.STONE; c.val=1; } }
+  function hitPlayer(){ if(player.inv>0||gameOver) return; player.inv=1.7; player.flash=.45; if(stones>0){ const n=Math.min(stones,1+rnd(3)); stones-=n; dropAt(player.x,player.y,n); say(`你被黑林影袭击，掉落 ${n} 个辉石。`); } else { gameOver=true; say('辉石耗尽，你被黑林影拖入森林。旅程中断。'); } }
+  function hitWorker(id){ const w=workers.find(w=>w.id===id&&!w.lost); if(!w) return; if(w.carry>0){ dropAt(w.x,w.y,w.carry); say(`工人 ${w.id} 被袭击，任务辉石掉落。`); w.carry=0; } else { w.lost=true; w.state='lost'; say(`工人 ${w.id} 被黑林影拖入森林。`); } }
+
+  function draw(){ background(); const cells=visibleCells(); frameStats.visible=cells.length; for(const c of cells) drawTile(c.x,c.y); drawZones(); drawPaths(); workers.forEach(drawWorker); monsters.forEach(drawMonster); drawPlayer(); drawOverlay(); drawMiniMap(); drawPanel(); }
+  function visibleCells(){ const arr=[],m=120; for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const p=iso(x,y); if(p.x>-m&&p.x<canvas.width+m&&p.y>-m&&p.y<canvas.height+m) arr.push({x,y,o:x+y}); } return arr.sort((a,b)=>a.o-b.o); }
+  function background(){ const g=ctx.createLinearGradient(0,0,0,canvas.height); g.addColorStop(0,isNight()?'#071012':phase()==='dusk'?'#18272a':'#162d2e'); g.addColorStop(1,isNight()?'#0d1214':'#18241f'); ctx.fillStyle=g; ctx.fillRect(0,0,canvas.width,canvas.height); }
+  function diamond(p,col,stroke){ ctx.beginPath(); ctx.moveTo(p.x,p.y-TH/2); ctx.lineTo(p.x+TW/2,p.y); ctx.lineTo(p.x,p.y+TH/2); ctx.lineTo(p.x-TW/2,p.y); ctx.closePath(); ctx.fillStyle=col; ctx.fill(); if(stroke){ ctx.strokeStyle=stroke; ctx.stroke(); } }
+  function drawTile(x,y){ const c=cell(x,y), p=iso(x,y); if(!c.seen) return diamond(p,'#101817','rgba(255,255,255,.025)'); const cols=['#355945','#173226','#213f50','#67462e','#785535','#42583b','#5e6040','#42695d','#315b76','#26312d','#4b4b3e']; const hi=hovered&&hovered.x===x&&hovered.y===y; diamond(p,cols[c.t],hi?'rgba(255,245,180,.9)':'rgba(255,255,255,.055)'); if(c.t===T.FOREST) drawTree(p.x,p.y-8,c.job); if(c.t===T.ROCK) drawRock(p.x,p.y-6); if(c.t===T.STONE) drawStone(p.x,p.y-8,c.val||1); if(c.t===T.CAMP) drawCamp(p.x,p.y-3,true); if(c.t===T.FIRE_SITE) drawCampSite(p.x,p.y-3); if(c.t===T.VILLAGE) drawVillage(p.x,p.y-4); if(c.t===T.BROKEN) label(p.x,p.y-30,'修桥 2'); if(c.t===T.GOAL) drawGoal(p.x,p.y-18); if(c.job==='chop') label(p.x,p.y-46,'砍树 1'); if(hi) label(p.x,p.y-62,hovered.label); }
+  function drawTree(x,y,job){ ctx.fillStyle='#14221d'; ctx.fillRect(x-4,y+8,8,17); ctx.fillStyle=job?'#294b36':'#183125'; ctx.beginPath(); ctx.moveTo(x,y-30); ctx.lineTo(x+18,y+12); ctx.lineTo(x-18,y+12); ctx.closePath(); ctx.fill(); }
+  function drawRock(x,y){ ctx.fillStyle='#4b5850'; ctx.beginPath(); ctx.ellipse(x,y+5,15,9,0,0,Math.PI*2); ctx.fill(); }
+  function drawStone(x,y,val){ ctx.fillStyle='#98d6ca'; ctx.beginPath(); ctx.arc(x-(val>=2?5:0),y,7,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#ecfffb'; ctx.beginPath(); ctx.arc(x-(val>=2?7:2),y-3,2,0,Math.PI*2); ctx.fill(); if(val>=2){ ctx.fillStyle='#8ac8bd'; ctx.beginPath(); ctx.arc(x+7,y+4,6,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#ecfffb'; ctx.beginPath(); ctx.arc(x+5,y+1,2,0,Math.PI*2); ctx.fill(); } }
+  function drawCamp(x,y,on){ ctx.fillStyle=on?'rgba(255,168,76,.9)':'rgba(120,118,94,.75)'; ctx.beginPath(); ctx.arc(x,y,9,0,Math.PI*2); ctx.fill(); if(on){ ctx.fillStyle='#fff0a6'; ctx.beginPath(); ctx.arc(x,y-3,4,0,Math.PI*2); ctx.fill(); } }
+  function drawCampSite(x,y){ ctx.strokeStyle='#a8a07a'; ctx.lineWidth=3; ctx.beginPath(); ctx.ellipse(x,y,15,8,0,0,Math.PI*2); ctx.stroke(); label(x,y-28,'旧火塘 2'); }
+  function drawVillage(x,y){ ctx.fillStyle='#624632'; ctx.fillRect(x-16,y-10,32,20); ctx.fillStyle='#a17752'; ctx.beginPath(); ctx.moveTo(x-22,y-10); ctx.lineTo(x,y-29); ctx.lineTo(x+22,y-10); ctx.closePath(); ctx.fill(); label(x,y-42,'部落'); }
+  function drawGoal(x,y){ ctx.strokeStyle='#9de8ff'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(x,y+24); ctx.lineTo(x,y-18); ctx.stroke(); ctx.fillStyle='#85ddff'; ctx.beginPath(); ctx.arc(x,y-23,10,0,Math.PI*2); ctx.fill(); label(x,y-48,'蓝色信标'); }
+  function round(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+  function label(x,y,t){ ctx.font='12px system-ui'; const w=ctx.measureText(t).width+14; round(x-w/2,y-13,w,23,11); ctx.fillStyle='rgba(7,15,17,.78)'; ctx.fill(); ctx.fillStyle='#eaf3ef'; ctx.textAlign='center'; ctx.fillText(t,x,y+3); }
+  function drawZones(){ const zones=[{x:START.x,y:START.y,r:3.2,c:'rgba(255,215,124,.16)'}]; for(let y=0;y<H;y++) for(let x=0;x<W;x++) if(cell(x,y).t===T.CAMP) zones.push({x,y,r:3.1,c:'rgba(255,180,82,.18)'}); for(const z of zones){ const p=iso(z.x,z.y); if(p.x<-150||p.x>canvas.width+150||p.y<-150||p.y>canvas.height+150) continue; ctx.fillStyle=z.c; ctx.beginPath(); ctx.ellipse(p.x,p.y,z.r*32,z.r*18,0,0,Math.PI*2); ctx.fill(); } }
+  function drawPaths(){ ctx.save(); ctx.strokeStyle='rgba(255,241,184,.22)'; ctx.lineWidth=2; for(const w of workers){ if(!w.path||w.pi>=w.path.length) continue; ctx.beginPath(); let p=iso(w.x,w.y); ctx.moveTo(p.x,p.y-6); for(let i=w.pi;i<w.path.length;i++){ p=iso(w.path[i].x,w.path[i].y); ctx.lineTo(p.x,p.y-6); } ctx.stroke(); } ctx.restore(); }
+  function drawPlayer(){ const p=iso(player.x,player.y), flash=player.flash>0&&Math.floor(player.flash*20)%2===0; ctx.fillStyle=flash?'#fff':'#f0cfa3'; ctx.beginPath(); ctx.arc(p.x,p.y-26,7,0,Math.PI*2); ctx.fill(); ctx.fillStyle=flash?'#eee':'#b66f48'; ctx.fillRect(p.x-7,p.y-20,14,20); if(player.inv>0) label(p.x,p.y-48,'受击'); }
+  function drawWorker(w){ if(w.lost) return; const p=iso(w.x,w.y); ctx.fillStyle=w.scared?'#ffd0d0':'#d5c59c'; ctx.beginPath(); ctx.arc(p.x,p.y-20,6,0,Math.PI*2); ctx.fill(); ctx.fillStyle=w.scared?'#823f3f':'#66704e'; ctx.fillRect(p.x-6,p.y-14,12,15); if(w.state==='moving') label(p.x,p.y-38,'前往'); if(w.state==='working') label(p.x,p.y-36,Math.ceil(4.2-w.prog)); if(w.state==='returning') label(p.x,p.y-38,'返回'); if(w.carry>0) label(p.x,p.y-54,`辉石${w.carry}`); else if(w.scared) label(p.x,p.y-54,'!'); }
+  function drawMonster(m){ const p=iso(m.x,m.y); ctx.fillStyle=m.target.type==='stone'?'rgba(20,20,0,.82)':m.target.type==='player'?'rgba(18,0,0,.82)':'rgba(0,0,0,.76)'; ctx.beginPath(); ctx.ellipse(p.x,p.y-8,19,12,0,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#dff4ff'; ctx.fillRect(p.x-6,p.y-13,3,3); ctx.fillRect(p.x+4,p.y-13,3,3); }
+  function drawOverlay(){ const a=isNight()?.42:phase()==='dusk'?.2:.05; ctx.fillStyle=`rgba(2,8,18,${a})`; ctx.fillRect(0,0,canvas.width,canvas.height); if(gameOver){ ctx.fillStyle='rgba(0,0,0,.58)'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.fillStyle='#fff1b8'; ctx.textAlign='center'; ctx.font='bold 34px system-ui'; ctx.fillText('旅程中断',canvas.width/2,canvas.height/2-14); ctx.fillStyle='#d9e8df'; ctx.font='16px system-ui'; ctx.fillText('辉石耗尽，你被黑林影拖入森林。按 R 重新开始。',canvas.width/2,canvas.height/2+22); } }
+  function drawMiniMap(){ const s=128,x0=canvas.width-s-22,y0=18; ctx.fillStyle='rgba(7,16,17,.62)'; round(x0-8,y0-8,s+16,s+16,12); ctx.fill(); for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const c=cell(x,y); if(!c.seen) continue; ctx.fillStyle=c.t===T.WATER?'#315b76':c.t===T.CAMP?'#e59e54':c.t===T.FIRE_SITE?'#aaa172':c.t===T.GOAL?'#8ee6ff':c.t===T.STONE?(c.val>=2?'#b6eee4':'#78bbb0'):'#496d54'; ctx.fillRect(x0+x/W*s,y0+y/H*s,Math.ceil(s/W),Math.ceil(s/H)); } ctx.fillStyle='#fff1b8'; ctx.beginPath(); ctx.arc(x0+player.x/W*s,y0+player.y/H*s,3,0,Math.PI*2); ctx.fill(); }
+  function drawPanel(){ const idle=workers.filter(w=>!w.lost&&w.state==='idle').length, moving=workers.filter(w=>!w.lost&&w.state==='moving').length, ret=workers.filter(w=>!w.lost&&w.state==='returning').length, alive=workers.filter(w=>!w.lost).length, lost=workers.length-alive; const ph=isNight()?'夜晚':phase()==='dusk'?'黄昏':'白天'; const pstate=gameOver?'游戏结束':safe(player.x,player.y)?'安全圈内':isNight()?'危险：可被追击':'安全'; panel.innerHTML=`<h1>《看海去》GPT_DEMO gpt.7</h1>地图：<b>${W}×${H}</b>　本帧绘制：<b>${frameStats.visible}</b> / ${frameStats.total}<br>辉石：<b>${stones}</b>　玩家：<b>${pstate}</b><br>工人：<b>${idle}/${alive}</b> 空闲　前往：<b>${moving}</b>　返回：<b>${ret}</b>　失踪：<b>${lost}</b><br>第 ${dayNo} 天 · ${ph}<br>当前互动：<b>${hovered?hovered.label:'附近无可互动目标'}</b><br>目标：${ended?'<b>已抵达蓝色信标</b>':'靠近目标按 Space 互动，规划营火与工人路线'}<div class="small">PC 操作已改为移动 + Space 互动；营火只能点亮旧火塘；黑林影会抢走散落辉石。</div>`; }
+
+  addEventListener('keydown',e=>{ keys[e.key]=true; if(e.key===' ') { e.preventDefault(); interact(); } if(e.key.toLowerCase()==='r') reset(); });
+  addEventListener('keyup',e=>keys[e.key]=false);
+  canvas.addEventListener('mousemove',e=>{ const q=fromScreen(e.clientX,e.clientY); /* 仅保留鼠标高亮辅助，不再点击派工 */ });
+  let last=performance.now(); function loop(now){ const dt=Math.min(.05,(now-last)/1000); last=now; update(dt); draw(); requestAnimationFrame(loop); }
+  resize(); reset(); requestAnimationFrame(loop);
 })();
-</script></body></html>
+</script>
+</body>
+</html>
