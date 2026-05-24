@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>《看海去》GPT_DEMO gpt.4</title>
+  <title>《看海去》GPT_DEMO gpt.5</title>
   <style>
     html, body { margin: 0; height: 100%; overflow: hidden; background: #081012; font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #eaf3ef; }
     canvas { display: block; width: 100vw; height: 100vh; cursor: crosshair; }
@@ -11,7 +11,7 @@
     .panel h1 { margin: 0 0 6px; font-size: 17px; letter-spacing: .04em; }
     .panel b { color: #fff1b8; }
     .panel .small { color: #b9cdc5; font-size: 12px; }
-    .help { position: fixed; right: 18px; bottom: 16px; max-width: 560px; padding: 12px 14px; border-radius: 16px; background: rgba(7, 16, 17, .66); border: 1px solid rgba(218,239,230,.14); color: #c8d7d1; font-size: 13px; line-height: 1.65; }
+    .help { position: fixed; right: 18px; bottom: 16px; max-width: 570px; padding: 12px 14px; border-radius: 16px; background: rgba(7, 16, 17, .66); border: 1px solid rgba(218,239,230,.14); color: #c8d7d1; font-size: 13px; line-height: 1.65; }
     .toast { position: fixed; left: 50%; transform: translateX(-50%); top: 20px; padding: 10px 16px; border-radius: 999px; background: rgba(237, 248, 241, .94); color: #173033; font-weight: 700; opacity: 0; transition: opacity .18s; pointer-events: none; }
     .toast.show { opacity: 1; }
   </style>
@@ -21,7 +21,7 @@
 <div class="panel" id="panel"></div>
 <div class="help">
   <b>操作</b>：WASD / 方向键移动；鼠标点击带标签的树障、断桥或空地派工；Space 投掷辉石临时光圈；R 重新生成。<br>
-  <b>gpt.4 调整</b>：派工时选择“可通行路径最短”的空闲工人；工人沿道路寻路，不再直线穿过森林、河流、岩石。
+  <b>gpt.5 调整</b>：返回中的工人也会参与“到任务目标的路径距离”计算；如果他最近，会中断返回并改去执行新任务。
 </div>
 <div class="toast" id="toast"></div>
 <script>
@@ -64,7 +64,7 @@
     ended = false;
     gameOver = false;
     reveal();
-    say('gpt.4：最近工人会沿可通行路径前往任务。');
+    say('gpt.5：返回中的工人也可以被重新派往最近任务。');
   }
 
   function makeMap() {
@@ -222,7 +222,7 @@
     if (!workTargets.length) return say('没有可抵达的工作位置，需要先开路。');
 
     const choice = chooseBestWorker(workTargets);
-    if (!choice) return say('没有空闲工人，或没有可通行路径。');
+    if (!choice) return say('没有可调度工人，或没有可通行路径。');
     stones -= cost;
     choice.worker.job = { type: jobType, targetX: x, targetY: y, workX: choice.dest.x, workY: choice.dest.y };
     choice.worker.path = choice.path;
@@ -235,7 +235,7 @@
   function chooseBestWorker(destinations) {
     let best = null;
     for (const w of workers) {
-      if (w.lost || w.state !== 'idle') continue;
+      if (w.lost || !['idle', 'returning'].includes(w.state)) continue;
       const start = tileOf(w);
       for (const dest of destinations) {
         const path = findPath(start, dest);
@@ -538,7 +538,7 @@
     const alive=workers.filter(w=>!w.lost).length, lost=workers.length-alive;
     const ph=night()?'夜晚':phase()==='dusk'?'黄昏':'白天';
     const playerState = gameOver ? '游戏结束' : safe(player.x, player.y) ? '安全圈内' : night() ? '危险：可被追击' : '安全';
-    panel.innerHTML=`<h1>《看海去》GPT_DEMO gpt.4</h1>地图：<b>${W}×${H}</b>　本帧绘制：<b>${frameStats.visible}</b> / ${frameStats.total}<br>辉石：<b>${stones}</b>　玩家：<b>${playerState}</b><br>工人：<b>${idle}/${alive}</b> 空闲　前往：<b>${moving}</b>　返回：<b>${returning}</b>　失踪：<b>${lost}</b><br>第 ${dayNo} 天 · ${ph}<br>目标：${ended?'<b>已抵达蓝色信标</b>':'收集辉石，派最近工人沿路开路，抵达蓝色信标'}<div class="small">派工会选择可通行路径最短的空闲工人。工人不会穿越森林、河流、岩石；砍树和修桥会站在相邻可通行格工作。</div>`;
+    panel.innerHTML=`<h1>《看海去》GPT_DEMO gpt.5</h1>地图：<b>${W}×${H}</b>　本帧绘制：<b>${frameStats.visible}</b> / ${frameStats.total}<br>辉石：<b>${stones}</b>　玩家：<b>${playerState}</b><br>工人：<b>${idle}/${alive}</b> 空闲　前往：<b>${moving}</b>　返回：<b>${returning}</b>　失踪：<b>${lost}</b><br>第 ${dayNo} 天 · ${ph}<br>目标：${ended?'<b>已抵达蓝色信标</b>':'收集辉石，派最近工人沿路开路，抵达蓝色信标'}<div class="small">返回中的工人也会参与最近任务计算；如果被选中，会中断返回并改去新任务。工人仍不会穿越森林、河流、岩石。</div>`;
   }
 
   window.addEventListener('keydown', e => { keys[e.key] = true; if (e.key === ' ') throwStone(); if (e.key.toLowerCase() === 'r') reset(); });
