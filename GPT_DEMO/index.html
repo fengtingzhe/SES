@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>《看海去》GPT_DEMO gpt.11.6</title>
+<title>《看海去》GPT_DEMO gpt.11.7</title>
 <style>
 html, body {
   margin: 0; height: 100%; overflow: hidden;
@@ -57,15 +57,14 @@ input { width: 100%; }
 <div id="top" class="box"></div>
 <button id="infoBtn">信息</button>
 <div id="hud" class="box hide"></div>
-<button id="verBtn">gpt.11.6 更新</button>
+<button id="verBtn">gpt.11.7 更新</button>
 <div id="ver" class="box">
-  <h1>gpt.11.6 黑影局部进攻逻辑</h1>
+  <h1>gpt.11.7 状态清理与夜晚刷怪修正</h1>
   <ul>
-    <li>黑影生成时会选择距离黑雾口最近的部落/营地作为进攻目标。</li>
-    <li>黑影不再全地图寻找围墙。</li>
-    <li>黑影只会被自身 4 格内的辉石、围墙和角色吸引。</li>
-    <li>safe() 不再让营地光圈内角色免疫黑影。</li>
-    <li>工人即使在营地光圈内，也会感知黑影并撤退。</li>
+    <li>修复矿工被黑影抓走后，矿山仍显示"已有工人"的占用残留。</li>
+    <li>修复同一个连续夜晚跨天后，黑影生成计数可能被重置的问题。</li>
+    <li>撤退中的工人不再会被重新派遣。</li>
+    <li>保留 gpt.11.6 的黑影局部进攻逻辑：最近营地行军、4 格感知、营地无免疫。</li>
   </ul>
 </div>
 <button id="conBtn">Console</button>
@@ -86,7 +85,7 @@ input { width: 100%; }
 </div>
 <div id="help" class="box">
   <b>操作</b>：WASD / 方向键移动；<b>Space 互动</b>；R 重开。<br>
-  <b>gpt.11.6</b>：黑影局部进攻逻辑。最近营地行军 · 4格感知 · 营地无免疫。<br>
+  <b>gpt.11.7</b>：状态清理与夜晚刷怪修正。矿山占用释放 · 夜晚刷怪计数修正 · 撤退工人不可派遣。<br>
   <b>F2</b> 开关文字标签 | <b>F3</b> 开关小地图（性能诊断）。
 </div>
 <div id="toast" class="box toast"></div>
@@ -188,8 +187,8 @@ let showMiniMap = true;
 // 黑影生成控制
 const MONSTERS_PER_NIGHT = 2;
 let nightSpawned = 0;
-let lastSpawnNightDay = 0;
 let spawnCooldown = 0;
+let wasNight = false;
 
 // 黑影局部感知
 const MONSTER_TACTICAL_RANGE = 4;
@@ -345,7 +344,7 @@ function resetGame() {
   nextId   = 3;
   foxEvent = null;
   reveal();
-  msg('gpt.11.6：黑影局部进攻逻辑已启动。');
+  msg('gpt.11.7：状态清理与夜晚刷怪修正已启动。');
 }
 
 function mkUnit(type, x, y) {
@@ -490,12 +489,14 @@ function createMine(x, y) {
 // 每夜刷怪计数器重置
 // ============================================================
 function updateNightSpawnCounter() {
-  if (night()) {
-    if (lastSpawnNightDay !== day) {
-      nightSpawned = 0;
-      lastSpawnNightDay = day;
-    }
+  let isNight = night();
+
+  if (isNight && !wasNight) {
+    nightSpawned = 0;
+    spawnCooldown = 0;
   }
+
+  wasNight = isNight;
 }
 
 // ============================================================
@@ -757,7 +758,7 @@ function convert(kind) {
 // 找最佳工人（路径最短）
 function bestWorker(locs) {
   let best = null, bp = null;
-  for (let w of workers.filter(w => !w.lost && (w.state === 'idle' || w.state === 'return')))
+  for (let w of workers.filter(w => !w.lost && !w.flee && (w.state === 'idle' || w.state === 'return')))
     for (let d of locs) {
       let p = findPath(w, d);
       if (p && (!bp || p.length < bp.length)) { best = w; bp = p; }
@@ -768,6 +769,15 @@ function bestWorker(locs) {
 
 // 派遣工人去矿山
 function sendMine(it, c) {
+  // 保险清理：如果记录的工人已不存在或失踪，自动释放矿山占用
+  if (c.mine?.worker) {
+    let owner = workers.find(w => w.id === c.mine.worker);
+    if (!owner || owner.lost) {
+      c.mine.worker = null;
+      c.lock = false;
+    }
+  }
+
   if (c.mine?.worker) return msg('矿山已有工人。');
   let w = bestWorker([{ x: it.x, y: it.y }]);
   if (!w) return msg('没有可用工人或道路不通。');
@@ -893,9 +903,22 @@ function walk(u, dt) {
 
 // 释放工人任务锁
 function release(u) {
+  // 释放普通任务目标 lock
   if (u.job && u.job.type !== 'return') {
     let c = cell(u.job.tx, u.job.ty); if (c) c.lock = false;
   }
+
+  // 释放该工人占用的矿山
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      let c = cell(x, y);
+      if (c && c.t === T.MN && c.mine?.worker === u.id) {
+        c.mine.worker = null;
+        c.lock = false;
+      }
+    }
+  }
+
   u.job = null; u.path = []; u.pi = 0; u.prog = 0;
 }
 
@@ -1571,12 +1594,12 @@ function drawHud() {
   topHud.innerHTML = `第 ${day} 天 · ${phText()}${pl.ctrlInv ? ' · 颠倒森林' : ''}`;
 
   hud.innerHTML =
-    `<h1>《看海去》GPT_DEMO gpt.11.6</h1>
+    `<h1>《看海去》GPT_DEMO gpt.11.7</h1>
     辉石：<b>${stone}</b>　玩家：<b>${safe(pl.x, pl.y) ? '安全圈内' : night() ? '危险' : '安全'}</b><br>
     工人：<b>${idle}/${alive}</b> 空闲　弓箭手：<b>${archers.length}</b>　未转职流民：<b>${pop.length}</b><br>
     返程流民：<b>${refs.length}</b>　怪物：<b>${monsters.length}</b>（本夜 <b>${nightSpawned}/${MONSTERS_PER_NIGHT}</b>）　狐狸奇遇：<b>${foxEvent?.active ? '进行中' : '未触发/已结束'}</b><br>
     当前互动：<b>${hover ? hover.label : '面前/附近无可互动目标；Space 可放置辉石'}</b><br>
-    <span class="small">gpt.11.6：黑影局部进攻逻辑。最近营地行军 · 4格感知 · 目标锁定 · 营地无免疫。<br>F2 开关文字标签 | F3 开关小地图（性能诊断）</span>`;
+    <span class="small">gpt.11.7：状态清理与夜晚刷怪修正。矿山占用释放 · 每晚固定 2 只 · 撤退工人不可派遣。<br>F2 开关文字标签 | F3 开关小地图（性能诊断）</span>`;
 }
 
 // ============================================================
