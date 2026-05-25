@@ -1,0 +1,3 @@
+id,type,cost,build_time,hp,description
+basic_building,building,1,4,0,基础建筑示例
+defense_wall,defense,2,4,3,防御建筑示例

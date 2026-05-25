@@ -1,0 +1,2 @@
+id,hp,move_speed,attack_interval,description
+basic_enemy,1,1.6,1.0,基础敌人示例

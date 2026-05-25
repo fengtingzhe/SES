@@ -1,0 +1,4 @@
+key,value,comment
+day_length,90,一天时长秒数
+player_move_speed,4.2,玩家移动速度
+enemy_spawn_per_night,2,每晚敌人生成数量

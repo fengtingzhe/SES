@@ -1,0 +1,4 @@
+key,value,comment
+map_width,80,地图宽度示例
+map_height,50,地图高度示例
+main_path_length,60,主路径长度示例
