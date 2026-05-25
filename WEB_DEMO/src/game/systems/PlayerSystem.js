@@ -1,3 +1,5 @@
+import { GameConfig } from '../config/GameConfig.js';
+
 export class PlayerSystem {
   update(state, input, dt) {
     const move = input.getMoveVector();
@@ -21,9 +23,9 @@ export class PlayerSystem {
     if (state.goalReached) return;
     const dx = state.player.x - state.goal.x;
     const dy = state.player.y - state.goal.y;
-    if (Math.hypot(dx, dy) < 0.75) {
+    if (Math.hypot(dx, dy) < GameConfig.player.goalRadius) {
       state.goalReached = true;
-      state.addMessage('你抵达了阶段终点。', 8);
+      state.addMessage(GameConfig.text.goalReached, GameConfig.text.messageDuration.goal);
     }
   }
 }

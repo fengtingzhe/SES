@@ -1,20 +1,5 @@
 import { findPath, getWalkableNeighbors } from '../../engine/math/pathfinding.js';
-import { TILE_TYPES } from '../world/TileMap.js';
-
-const JOBS = {
-  chop: {
-    duration: 2.8,
-    message: '工人开始砍树。'
-  },
-  repair: {
-    duration: 3.2,
-    message: '工人开始修桥。'
-  },
-  lightCamp: {
-    duration: 3.0,
-    message: '工人开始点亮营地。'
-  }
-};
+import { GameConfig } from '../config/GameConfig.js';
 
 export class WorkerSystem {
   constructor(campSystem, resourceSystem) {
@@ -23,26 +8,28 @@ export class WorkerSystem {
   }
 
   requestJob(state, target) {
+    const states = GameConfig.worker.states;
+
     if (state.player.stones < target.cost) {
-      state.addMessage(`需要 ${target.cost} 个辉石。`, 2);
+      state.addMessage(GameConfig.text.needStone(target.cost), GameConfig.text.messageDuration.short);
       return false;
     }
 
-    const worker = state.workers.find(candidate => candidate.state === 'idle');
+    const worker = state.workers.find(candidate => candidate.state === states.idle);
     if (!worker) {
-      state.addMessage('没有空闲工人。', 2);
+      state.addMessage(GameConfig.text.noIdleWorker, GameConfig.text.messageDuration.short);
       return false;
     }
 
     const workSpot = this.findWorkSpot(state, target);
     if (!workSpot) {
-      state.addMessage('工人找不到可到达的位置。', 3);
+      state.addMessage(GameConfig.text.noWorkSpot, GameConfig.text.messageDuration.normal);
       return false;
     }
 
     const path = findPath(state.map, worker, workSpot);
     if (!path) {
-      state.addMessage('通往目标的道路还没有打开。', 3);
+      state.addMessage(GameConfig.text.noPath, GameConfig.text.messageDuration.normal);
       return false;
     }
 
@@ -50,7 +37,7 @@ export class WorkerSystem {
     if (tile) tile.reserved = true;
 
     state.player.stones -= target.cost;
-    worker.state = 'moving';
+    worker.state = states.moving;
     worker.path = path;
     worker.pathIndex = 1;
     worker.progress = 0;
@@ -61,24 +48,24 @@ export class WorkerSystem {
       workSpot
     };
 
-    state.addMessage('已派遣工人。', 2);
+    state.addMessage(GameConfig.text.workerSent, GameConfig.text.messageDuration.short);
     return true;
   }
 
   update(state, dt) {
     for (const worker of state.workers) {
-      if (worker.state === 'moving' || worker.state === 'returning') {
+      if (worker.state === GameConfig.worker.states.moving || worker.state === GameConfig.worker.states.returning) {
         this.walk(worker, dt);
         if (this.reachedPathEnd(worker)) {
-          if (worker.state === 'moving') {
+          if (worker.state === GameConfig.worker.states.moving) {
             this.startWorking(state, worker);
           } else {
-            worker.state = 'idle';
+            worker.state = GameConfig.worker.states.idle;
             worker.path = [];
             worker.pathIndex = 0;
           }
         }
-      } else if (worker.state === 'working') {
+      } else if (worker.state === GameConfig.worker.states.working) {
         this.updateWork(state, worker, dt);
       }
     }
@@ -93,7 +80,7 @@ export class WorkerSystem {
     let best = null;
     for (const candidate of candidates) {
       const hasPath = state.workers.some(worker => (
-        worker.state === 'idle' && findPath(state.map, worker, candidate)
+        worker.state === GameConfig.worker.states.idle && findPath(state.map, worker, candidate)
       ));
       if (hasPath) {
         best = candidate;
@@ -111,7 +98,9 @@ export class WorkerSystem {
     const dx = target.x - worker.x;
     const dy = target.y - worker.y;
     const distance = Math.hypot(dx, dy);
-    const speed = worker.state === 'returning' ? 2.25 : 2.0;
+    const speed = worker.state === GameConfig.worker.states.returning
+      ? GameConfig.worker.returnSpeed
+      : GameConfig.worker.moveSpeed;
     const step = speed * dt;
 
     if (distance <= step) {
@@ -130,13 +119,13 @@ export class WorkerSystem {
   }
 
   startWorking(state, worker) {
-    worker.state = 'working';
+    worker.state = GameConfig.worker.states.working;
     worker.progress = 0;
-    state.addMessage(JOBS[worker.job.type].message, 2);
+    state.addMessage(GameConfig.jobs[worker.job.type].startMessage, GameConfig.text.messageDuration.short);
   }
 
   updateWork(state, worker, dt) {
-    const jobInfo = JOBS[worker.job.type];
+    const jobInfo = GameConfig.jobs[worker.job.type];
     worker.progress += dt / jobInfo.duration;
 
     if (worker.progress < 1) return;
@@ -151,20 +140,20 @@ export class WorkerSystem {
     if (!tile) return;
 
     if (type === 'chop') {
-      state.map.setType(x, y, TILE_TYPES.GRASS);
-      this.resourceSystem.dropStone(state, x, y, 1, null, 'reward');
-      state.addMessage('树障已清理，掉落 1 个辉石。', 3);
+      state.map.setType(x, y, GameConfig.jobs.chop.resultTile);
+      this.resourceSystem.dropStone(state, x, y, GameConfig.jobs.chop.rewardStone || GameConfig.stone.rewardValue, null, 'reward');
+      state.addMessage(GameConfig.jobs.chop.finishMessage, GameConfig.text.messageDuration.normal);
     }
 
     if (type === 'repair') {
-      state.map.setType(x, y, TILE_TYPES.BRIDGE);
-      state.addMessage('断桥已修复。', 3);
+      state.map.setType(x, y, GameConfig.jobs.repair.resultTile);
+      state.addMessage(GameConfig.jobs.repair.finishMessage, GameConfig.text.messageDuration.normal);
     }
 
     if (type === 'lightCamp') {
-      state.map.setType(x, y, TILE_TYPES.CAMP);
+      state.map.setType(x, y, GameConfig.jobs.lightCamp.resultTile);
       state.camps.push({ x, y, type: 'camp', active: true });
-      state.addMessage('新营地已点亮。', 3);
+      state.addMessage(GameConfig.jobs.lightCamp.finishMessage, GameConfig.text.messageDuration.normal);
     }
   }
 
@@ -174,6 +163,8 @@ export class WorkerSystem {
     worker.progress = 0;
     worker.path = returnPath || [];
     worker.pathIndex = returnPath && returnPath.length > 1 ? 1 : 0;
-    worker.state = returnPath && returnPath.length > 1 ? 'returning' : 'idle';
+    worker.state = returnPath && returnPath.length > 1
+      ? GameConfig.worker.states.returning
+      : GameConfig.worker.states.idle;
   }
 }

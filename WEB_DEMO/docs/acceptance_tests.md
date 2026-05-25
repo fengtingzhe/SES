@@ -80,3 +80,28 @@
 5. 主路径仍可通过砍树、修桥、点亮营地推进到终点
 6. 浏览器控制台无 JavaScript 报错
 ```
+
+## v0.3 GameConfig 基础配置集中化验收
+
+```text
+测试名称：WEB_DEMO v0.3 GameConfig 基础配置集中化
+前置条件：已安装 Node.js
+操作步骤：
+1. 进入 WEB_DEMO 目录
+2. 执行 npm install
+3. 执行 npm run dev
+4. 打开浏览器
+5. 完成 v0.2.1 核心循环验收：移动、拾取辉石、放置辉石、派工人砍树、修桥、点亮营地、观察昼夜、抵达阶段终点
+6. 修改 GameConfig.js 中一个安全参数，例如 player.moveSpeed 或 dayNight.dayLength
+7. 重新运行，确认对应效果变化
+8. 打开 GameConfig.js，检查主要字段是否有中文注释，能否让策划理解字段含义、单位和影响范围
+预期结果：
+1. 浏览器控制台无 JavaScript 报错
+2. v0.2.1 核心玩法不被破坏
+3. GameConfig.js 存在并被多个系统引用
+4. 主要静态数值不再散落在各系统文件中
+5. 修改 GameConfig 的关键参数能影响游戏表现
+6. GameConfig 的关键配置字段有足够中文注释，策划能理解每个参数用途
+7. WEB_DEMO/index.html 仍只加载 /src/main.js
+8. WEB_DEMO/src/main.js 仍只负责启动 GameApp
+```

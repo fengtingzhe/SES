@@ -1,3 +1,5 @@
+import { GameConfig } from '../../game/config/GameConfig.js';
+
 export class HudRenderer {
   constructor(renderer) {
     this.renderer = renderer;
@@ -6,12 +8,13 @@ export class HudRenderer {
   draw(state) {
     const { ctx } = this.renderer;
     const summary = state.getWorkerSummary();
+    const states = GameConfig.worker.states;
     const lines = [
       `${state.version}`,
-      `辉石：${state.player.stones}    工人：idle ${summary.idle} / moving ${summary.moving} / working ${summary.working} / returning ${summary.returning}`,
+      `辉石：${state.player.stones}    工人：idle ${summary[states.idle]} / moving ${summary[states.moving]} / working ${summary[states.working]} / returning ${summary[states.returning]}`,
       `第 ${state.day} 天 · ${state.phaseLabel}`,
-      `目标：收集辉石，派工人清路，抵达远方信标`,
-      `操作：WASD / 方向键移动，Space 互动或放置辉石，R 重开`
+      GameConfig.text.goalText,
+      GameConfig.text.controlsText
     ];
 
     this.panel(16, 16, Math.min(760, this.renderer.width - 32), 132);
@@ -26,7 +29,7 @@ export class HudRenderer {
 
     const prompt = state.hover
       ? state.hover.prompt
-      : '附近无互动目标：Space 放置一枚辉石';
+      : GameConfig.text.noInteractionPrompt;
     this.bottomMessage(state, prompt);
   }
 
@@ -55,7 +58,7 @@ export class HudRenderer {
       ctx.font = 'bold 28px system-ui, sans-serif';
       ctx.textAlign = 'center';
       ctx.fillStyle = '#a7e5ff';
-      ctx.fillText('你抵达了阶段终点。', this.renderer.width / 2, this.renderer.height / 2 - 80);
+      ctx.fillText(GameConfig.text.goalReached, this.renderer.width / 2, this.renderer.height / 2 - 80);
     }
   }
 }

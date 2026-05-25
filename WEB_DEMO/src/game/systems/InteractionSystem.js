@@ -1,22 +1,15 @@
-import { TILE_TYPES } from '../world/TileMap.js';
+import { GameConfig } from '../config/GameConfig.js';
 
-const TARGETS = {
-  [TILE_TYPES.TREE_BLOCK]: {
-    type: 'chop',
-    cost: 1,
-    label: '砍树障'
-  },
-  [TILE_TYPES.BROKEN_BRIDGE]: {
-    type: 'repair',
-    cost: 1,
-    label: '修桥'
-  },
-  [TILE_TYPES.OLD_CAMP]: {
-    type: 'lightCamp',
-    cost: 1,
-    label: '点亮营地'
-  }
-};
+const TARGETS = Object.fromEntries(
+  Object.entries(GameConfig.jobs).map(([type, job]) => [
+    job.targetTile,
+    {
+      type,
+      cost: job.cost,
+      label: job.label
+    }
+  ])
+);
 
 export class InteractionSystem {
   constructor(workerSystem, resourceSystem) {
@@ -51,7 +44,7 @@ export class InteractionSystem {
         const target = this.getTargetAt(state, x, y);
         if (!target) continue;
         const distance = Math.hypot(state.player.x - x, state.player.y - y);
-        if (distance > 1.7) continue;
+        if (distance > GameConfig.interaction.searchRadius) continue;
         if (!best || distance < best.distance) {
           best = { ...target, distance };
         }
@@ -71,7 +64,7 @@ export class InteractionSystem {
       ...target,
       x,
       y,
-      prompt: `${target.label}：Space 派遣工人，消耗 ${target.cost} 辉石`
+      prompt: GameConfig.text.interactionPrompt(target.label, target.cost)
     };
   }
 }

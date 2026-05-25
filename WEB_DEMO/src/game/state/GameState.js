@@ -1,4 +1,5 @@
 import { MapGenerator } from '../world/MapGenerator.js';
+import { GameConfig } from '../config/GameConfig.js';
 
 export class GameState {
   static createNew() {
@@ -6,7 +7,7 @@ export class GameState {
   }
 
   constructor(world) {
-    this.version = 'WEB_DEMO v0.2';
+    this.version = GameConfig.version;
     this.map = world.map;
     this.start = world.start;
     this.goal = world.goal;
@@ -17,7 +18,7 @@ export class GameState {
       x: world.start.x,
       y: world.start.y,
       dir: { x: 1, y: 0 },
-      speed: 4.2,
+      speed: GameConfig.player.moveSpeed,
       stones: 0
     };
     this.camera = { x: this.player.x, y: this.player.y };
@@ -27,8 +28,8 @@ export class GameState {
     this.phaseLabel = '白天';
     this.hover = null;
     this.message = {
-      text: '收集辉石，按 Space 派遣工人开路，向远方信标前进。',
-      timer: 5
+      text: GameConfig.text.startMessage,
+      timer: GameConfig.text.messageDuration.start
     };
     this.goalReached = false;
     this.nextStoneId = 100;
@@ -45,11 +46,12 @@ export class GameState {
   }
 
   getWorkerSummary() {
+    const states = GameConfig.worker.states;
     const summary = {
-      idle: 0,
-      moving: 0,
-      working: 0,
-      returning: 0
+      [states.idle]: 0,
+      [states.moving]: 0,
+      [states.working]: 0,
+      [states.returning]: 0
     };
 
     for (const worker of this.workers) {

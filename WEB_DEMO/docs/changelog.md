@@ -2,6 +2,17 @@
 
 本文件记录 WEB_DEMO 的版本更新。
 
+## v0.3.0
+
+状态：GameConfig 基础配置集中化
+
+内容：
+- 新增 `WEB_DEMO/src/game/config/GameConfig.js`。
+- 将 v0.2.1 中散落在系统代码中的主要静态数值集中到 GameConfig。
+- 玩家、工人、任务、辉石、昼夜、地图生成和基础文案开始从 GameConfig 读取。
+- 为 GameConfig 的关键字段补充中文注释，说明字段用途、单位、影响范围和调参风险。
+- 不做 CSV / JSON 读取，GameConfig 作为未来拆分配置文件前的中间层。
+
 ## v0.2.1
 
 状态：地图轻随机修正
