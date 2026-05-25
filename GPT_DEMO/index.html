@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>《看海去》GPT_DEMO gpt.11.5</title>
+<title>《看海去》GPT_DEMO gpt.11.6</title>
 <style>
 html, body {
   margin: 0; height: 100%; overflow: hidden;
@@ -57,14 +57,15 @@ input { width: 100%; }
 <div id="top" class="box"></div>
 <button id="infoBtn">信息</button>
 <div id="hud" class="box hide"></div>
-<button id="verBtn">gpt.11.5 更新</button>
+<button id="verBtn">gpt.11.6 更新</button>
 <div id="ver" class="box">
-  <h1>gpt.11.5 黑影攻城与平衡修正</h1>
+  <h1>gpt.11.6 黑影局部进攻逻辑</h1>
   <ul>
-    <li>黑影全地图寻找最近围墙，确保夜晚会攻城。</li>
-    <li>spawnMonsters 把围墙纳入可攻击目标判断。</li>
-    <li>黑影每晚固定生成数量，默认每晚 2 只。</li>
-    <li>流民火堆每 10 秒刷新一次可招募状态。</li>
+    <li>黑影生成时会选择距离黑雾口最近的部落/营地作为进攻目标。</li>
+    <li>黑影不再全地图寻找围墙。</li>
+    <li>黑影只会被自身 4 格内的辉石、围墙和角色吸引。</li>
+    <li>safe() 不再让营地光圈内角色免疫黑影。</li>
+    <li>工人即使在营地光圈内，也会感知黑影并撤退。</li>
   </ul>
 </div>
 <button id="conBtn">Console</button>
@@ -85,7 +86,7 @@ input { width: 100%; }
 </div>
 <div id="help" class="box">
   <b>操作</b>：WASD / 方向键移动；<b>Space 互动</b>；R 重开。<br>
-  <b>gpt.11.5</b>：黑影攻城与平衡修正。全图围墙感知 · 固定刷怪 · 流民火堆刷新。<br>
+  <b>gpt.11.6</b>：黑影局部进攻逻辑。最近营地行军 · 4格感知 · 营地无免疫。<br>
   <b>F2</b> 开关文字标签 | <b>F3</b> 开关小地图（性能诊断）。
 </div>
 <div id="toast" class="box toast"></div>
@@ -189,6 +190,10 @@ const MONSTERS_PER_NIGHT = 2;
 let nightSpawned = 0;
 let lastSpawnNightDay = 0;
 let spawnCooldown = 0;
+
+// 黑影局部感知
+const MONSTER_TACTICAL_RANGE = 4;
+const MONSTER_TARGET_LOCK = 1.2;
 
 // Toast 消息
 function msg(t) {
@@ -340,7 +345,7 @@ function resetGame() {
   nextId   = 3;
   foxEvent = null;
   reveal();
-  msg('gpt.11.5：黑影攻城与平衡修正已启动。');
+  msg('gpt.11.6：黑影局部进攻逻辑已启动。');
 }
 
 function mkUnit(type, x, y) {
@@ -807,9 +812,9 @@ function updateUnits(dt) {
 }
 
 // 黑影威胁检测（撤退与恢复）
+// safe() 不再提供绝对庇护；营地光圈仅用于视觉/HUD，不影响黑影威胁判定
 function checkThreat(w) {
-  // 安全区内跳过；普通返回工人跳过；但 flee=true 的撤退工人需要进入下方恢复逻辑
-  if (safe(w.x, w.y) || (w.state === 'return' && !w.flee)) return;
+  if (w.state === 'return' && !w.flee) return;
 
   let nearMonster = monsters.find(m =>
     Math.abs(m.x - w.x) <= 3 && Math.abs(m.y - w.y) <= 3
@@ -1008,7 +1013,34 @@ function updateArchers(dt) {
 // ============================================================
 // 黑影系统
 // ============================================================
-// 检查地图上是否存在围墙（用于刷怪判断）
+// 战术距离（切比雪夫距离，与地块网格一致）
+function tacticalDist(a, b) {
+  return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+}
+
+// 是否在黑影战术感知范围内
+function inTacticalRange(m, o, r = MONSTER_TACTICAL_RANGE) {
+  return tacticalDist(m, o) <= r;
+}
+
+// 目标唯一标识（用于锁定判断）
+function targetKey(ti) {
+  if (!ti) return '';
+  let o = ti.obj;
+  if (ti.kind === 'stone' || ti.kind === 'wall' || ti.kind === 'camp') {
+    return ti.kind + ':' + Math.round(o.x) + ',' + Math.round(o.y);
+  }
+  if (ti.kind === 'worker' || ti.kind === 'archer') {
+    return ti.kind + ':' + o.id;
+  }
+  if (ti.kind === 'refugee') {
+    return ti.kind + ':' + o.ox + ',' + o.oy;
+  }
+  if (ti.kind === 'player') return 'player';
+  return ti.kind;
+}
+
+// 检查地图上是否存在围墙（工具函数，当前未用于刷怪判断）
 function hasWall() {
   for (let y = 0; y < H; y++)
     for (let x = 0; x < W; x++) {
@@ -1031,94 +1063,88 @@ function spawnMonsters() {
       if (cell(x, y).t === T.FOG) fs.push({ x, y });
   if (!fs.length) return;
 
-  // 确认存在可攻击目标（角色、辉石或围墙）
-  let hasTarget = false;
-  if (!safe(pl.x, pl.y) && pl.inv <= 0) hasTarget = true;
-  if (workers.some(w => !w.lost && !safe(w.x, w.y))) hasTarget = true;
-  if (refs.some(r => !r.lost && !safe(r.x, r.y))) hasTarget = true;
-  if (archers.some(a => !safe(a.x, a.y))) hasTarget = true;
-
-  // 检查地图上是否有散落辉石
-  let hasStone = false;
-  if (!hasTarget) {
-    for (let y = 0; y < H && !hasStone; y++)
-      for (let x = 0; x < W && !hasStone; x++)
-        if (cell(x, y).t === T.S) hasStone = true;
-  }
-
-  if (!hasTarget && !hasStone && !hasWall()) return;
-
+  // 不在此处判断 safe()/hasWall()；黑影生成后由 raidCamp 驱动行军
   let f = fs[rnd(fs.length)];
-  monsters.push({ x: f.x, y: f.y, hp: 1, atk: 0, returning: false });
+  let raidCamp = nearestHome(f);
+  monsters.push({
+    x: f.x, y: f.y, hp: 1, atk: 0, returning: false,
+    raidCamp, targetKey: null, targetLock: 0
+  });
   nightSpawned++;
-  spawnCooldown = 3;  // 避免同一帧生成多只
+  spawnCooldown = 3;
 }
 
-// 每帧寻找目标：辉石 > 围墙 > 工人 > 弓箭手 > 返程流民 > 主角
+// 局部战术目标选择（不再使用 safe() 过滤角色）
 function findNearestTarget(m) {
-  // 第一优先级：拾取附近 8×8 范围内的辉石
+  let R = MONSTER_TACTICAL_RANGE;
+
+  // 扫描局部辉石
   let stones = [];
-  for (let y = Math.floor(m.y - 4); y <= Math.ceil(m.y + 4); y++) {
-    for (let x = Math.floor(m.x - 4); x <= Math.ceil(m.x + 4); x++) {
+  for (let y = Math.floor(m.y - R); y <= Math.ceil(m.y + R); y++) {
+    for (let x = Math.floor(m.x - R); x <= Math.ceil(m.x + R); x++) {
       let c = cell(x, y);
-      if (c && c.t === T.S) stones.push({ x, y });
+      if (c && c.t === T.S) stones.push({ kind: 'stone', obj: { x, y } });
     }
   }
-  if (stones.length) {
-    stones.sort((a, b) => dist(m, a) - dist(m, b));
-    return { kind: 'stone', obj: stones[0] };
-  }
+  if (stones.length) stones.sort((a, b) => dist(m, a.obj) - dist(m, b.obj));
 
-  // 第二优先级：全地图围墙（确保黑影会攻城）
+  // 扫描局部围墙
   let walls = [];
-  for (let y = 0; y < H; y++) {
-    for (let x = 0; x < W; x++) {
+  for (let y = Math.floor(m.y - R); y <= Math.ceil(m.y + R); y++) {
+    for (let x = Math.floor(m.x - R); x <= Math.ceil(m.x + R); x++) {
       let c = cell(x, y);
-      if (c && c.t === T.WL && (c.hp || 0) > 0) walls.push({ x, y, hp: c.hp });
+      if (c && c.t === T.WL && (c.hp || 0) > 0) walls.push({ kind: 'wall', obj: { x, y } });
     }
   }
-  if (walls.length) {
-    walls.sort((a, b) => dist(m, a) - dist(m, b));
-    return { kind: 'wall', obj: walls[0] };
+  if (walls.length) walls.sort((a, b) => dist(m, a.obj) - dist(m, b.obj));
+
+  // 扫描局部角色（不使用 safe()）
+  let workerTargets = workers
+    .filter(w => !w.lost && inTacticalRange(m, w))
+    .sort((a, b) => dist(m, a) - dist(m, b))
+    .map(w => ({ kind: 'worker', obj: w }));
+
+  let archerTargets = archers
+    .filter(a => inTacticalRange(m, a))
+    .sort((a, b) => dist(m, a) - dist(m, b))
+    .map(a => ({ kind: 'archer', obj: a }));
+
+  let refugeeTargets = refs
+    .filter(r => !r.lost && inTacticalRange(m, r))
+    .sort((a, b) => dist(m, a) - dist(m, b))
+    .map(r => ({ kind: 'refugee', obj: r }));
+
+  let playerTarget = (pl.inv <= 0 && inTacticalRange(m, pl))
+    ? [{ kind: 'player', obj: pl }] : [];
+
+  // 如果 targetLock 未过期且原目标仍在候选内，继续锁定
+  if (m.targetLock > 0 && m.targetKey) {
+    let all = [...stones, ...walls, ...workerTargets, ...archerTargets, ...refugeeTargets, ...playerTarget];
+    let locked = all.find(t => targetKey(t) === m.targetKey);
+    if (locked) return locked;
   }
 
-  // 第三优先级：工人（未失踪且不在安全区）
-  let workerTargets = workers.filter(w => !w.lost && !safe(w.x, w.y));
-  if (workerTargets.length) {
-    workerTargets.sort((a, b) => dist(m, a) - dist(m, b));
-    return { kind: 'worker', obj: workerTargets[0] };
+  // 优先级：辉石 > 围墙 > 工人 > 弓箭手 > 返程流民 > 主角
+  for (let g of [stones, walls, workerTargets, archerTargets, refugeeTargets, playerTarget]) {
+    if (g.length) return g[0];
   }
 
-  // 第四优先级：弓箭手（不在安全区）
-  let archerTargets = archers.filter(a => !safe(a.x, a.y));
-  if (archerTargets.length) {
-    archerTargets.sort((a, b) => dist(m, a) - dist(m, b));
-    return { kind: 'archer', obj: archerTargets[0] };
-  }
-
-  // 第五优先级：返程流民（未失踪且不在安全区）
-  let refugeeTargets = refs.filter(r => !r.lost && !safe(r.x, r.y));
-  if (refugeeTargets.length) {
-    refugeeTargets.sort((a, b) => dist(m, a) - dist(m, b));
-    return { kind: 'refugee', obj: refugeeTargets[0] };
-  }
-
-  // 最后才选择主角
-  if (!safe(pl.x, pl.y) && pl.inv <= 0) {
-    return { kind: 'player', obj: pl };
-  }
-
-  return null;
+  // 无局部目标：向 raidCamp 行军
+  if (!m.raidCamp) m.raidCamp = nearestHome(m);
+  return { kind: 'camp', obj: m.raidCamp };
 }
 
 function updateMonsters(dt) {
   for (let m of monsters) {
+    // 每帧减少 targetLock
+    m.targetLock = Math.max(0, (m.targetLock || 0) - dt);
+
     // 已在返回黑雾口途中
     if (m.returning) {
       let f = nearestFog(m);
       if (!f) { m.dead = true; continue; }
       let d = dist(m, f);
-      if (d < .35) { m.dead = true; continue; }  // 抵达黑雾口消失
+      if (d < .35) { m.dead = true; continue; }
       m.x += (f.x - m.x) / d * 1.6 * dt;
       m.y += (f.y - m.y) / d * 1.6 * dt;
       continue;
@@ -1134,13 +1160,31 @@ function updateMonsters(dt) {
       continue;
     }
 
+    // 更新 targetKey 和 targetLock（非 camp 目标）
+    if (ti.kind !== 'camp') {
+      let k = targetKey(ti);
+      if (k !== m.targetKey) {
+        m.targetKey = k;
+        m.targetLock = MONSTER_TARGET_LOCK;
+      }
+    }
+
     let t = ti.obj;
     let d = dist(m, t);
 
-    // 围墙攻击逻辑
+    // 战略行军：向 raidCamp 移动，不攻击营地本体
+    if (ti.kind === 'camp') {
+      if (d > .25) {
+        m.x += (t.x - m.x) / d * 1.6 * dt;
+        m.y += (t.y - m.y) / d * 1.6 * dt;
+      }
+      m.atk = 0;
+      continue;
+    }
+
+    // 围墙攻击逻辑（仅来自局部扫描）
     if (ti.kind === 'wall') {
       if (d < .6) {
-        // 贴墙，蓄力攻击
         m.atk += dt;
         if (m.atk >= 1.0) {
           m.atk = 0;
@@ -1152,10 +1196,9 @@ function updateMonsters(dt) {
           }
         }
       } else {
-        // 逼近围墙
         m.x += (t.x - m.x) / d * 1.6 * dt;
         m.y += (t.y - m.y) / d * 1.6 * dt;
-        m.atk = 0;  // 离开重置攻击计时
+        m.atk = 0;
       }
       continue;
     }
@@ -1528,12 +1571,12 @@ function drawHud() {
   topHud.innerHTML = `第 ${day} 天 · ${phText()}${pl.ctrlInv ? ' · 颠倒森林' : ''}`;
 
   hud.innerHTML =
-    `<h1>《看海去》GPT_DEMO gpt.11.5</h1>
+    `<h1>《看海去》GPT_DEMO gpt.11.6</h1>
     辉石：<b>${stone}</b>　玩家：<b>${safe(pl.x, pl.y) ? '安全圈内' : night() ? '危险' : '安全'}</b><br>
     工人：<b>${idle}/${alive}</b> 空闲　弓箭手：<b>${archers.length}</b>　未转职流民：<b>${pop.length}</b><br>
     返程流民：<b>${refs.length}</b>　怪物：<b>${monsters.length}</b>（本夜 <b>${nightSpawned}/${MONSTERS_PER_NIGHT}</b>）　狐狸奇遇：<b>${foxEvent?.active ? '进行中' : '未触发/已结束'}</b><br>
     当前互动：<b>${hover ? hover.label : '面前/附近无可互动目标；Space 可放置辉石'}</b><br>
-    <span class="small">gpt.11.5：黑影攻城与平衡修正。全图围墙感知 · 每晚固定 2 只 · 流民火堆 10s 刷新。<br>F2 开关文字标签 | F3 开关小地图（性能诊断）</span>`;
+    <span class="small">gpt.11.6：黑影局部进攻逻辑。最近营地行军 · 4格感知 · 目标锁定 · 营地无免疫。<br>F2 开关文字标签 | F3 开关小地图（性能诊断）</span>`;
 }
 
 // ============================================================
