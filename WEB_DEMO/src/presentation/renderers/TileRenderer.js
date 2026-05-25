@@ -1,4 +1,5 @@
 import { TILE_TYPES } from '../../game/world/TileMap.js';
+import { GameConfig } from '../../game/config/GameConfig.js';
 
 const COLORS = {
   [TILE_TYPES.GRASS]: '#496948',
@@ -13,6 +14,8 @@ const COLORS = {
   [TILE_TYPES.WALL_FOUNDATION]: '#6b7168',
   [TILE_TYPES.WALL]: '#4e3b2d',
   [TILE_TYPES.ARCHER_POST]: '#5f5a3a',
+  [TILE_TYPES.MINE]: '#4c5150',
+  [TILE_TYPES.REFUGEE_FIRE]: '#5d4a32',
   [TILE_TYPES.GOAL]: '#245d80'
 };
 
@@ -53,6 +56,8 @@ export class TileRenderer {
     if (tile.type === TILE_TYPES.WALL_FOUNDATION) this.drawWallFoundation(ctx, rect, tile.reserved);
     if (tile.type === TILE_TYPES.WALL) this.drawWall(ctx, rect, tile);
     if (tile.type === TILE_TYPES.ARCHER_POST) this.drawArcherPost(ctx, rect);
+    if (tile.type === TILE_TYPES.MINE) this.drawMine(ctx, rect, state, x, y);
+    if (tile.type === TILE_TYPES.REFUGEE_FIRE) this.drawRefugeeFire(ctx, rect, state, x, y);
     if (tile.type === TILE_TYPES.GOAL) this.drawGoal(ctx, rect);
   }
 
@@ -147,6 +152,40 @@ export class TileRenderer {
     ctx.moveTo(rect.x + 10, rect.y + 22);
     ctx.quadraticCurveTo(rect.x + rect.size / 2, rect.y + 7, rect.x + rect.size - 10, rect.y + 22);
     ctx.stroke();
+  }
+
+  drawMine(ctx, rect, state, x, y) {
+    const mine = state.mines.find(candidate => candidate.x === x && candidate.y === y);
+    ctx.fillStyle = mine?.workerId ? '#8d8060' : '#626b6b';
+    ctx.beginPath();
+    ctx.moveTo(rect.x + 8, rect.y + 23);
+    ctx.lineTo(rect.x + rect.size / 2, rect.y + 8);
+    ctx.lineTo(rect.x + rect.size - 8, rect.y + 23);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#202525';
+    ctx.stroke();
+
+    if (mine?.workerId) {
+      const ratio = Math.min(1, mine.progress / GameConfig.mine.workDuration);
+      ctx.fillStyle = '#d9f0ff';
+      ctx.fillRect(rect.x + 7, rect.y + 26, (rect.size - 14) * ratio, 3);
+    }
+  }
+
+  drawRefugeeFire(ctx, rect, state, x, y) {
+    const fire = state.refugeeFires.find(candidate => candidate.x === x && candidate.y === y);
+    ctx.fillStyle = '#4a3427';
+    ctx.fillRect(rect.x + 9, rect.y + 19, rect.size - 18, 5);
+    ctx.fillStyle = fire?.count > 0 ? '#f0a041' : '#5d5048';
+    ctx.beginPath();
+    ctx.arc(rect.x + rect.size / 2, rect.y + 16, 7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffe4a0';
+    ctx.font = '10px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`${fire?.count ?? 0}`, rect.x + rect.size / 2, rect.y + rect.size / 2 + 8);
   }
 
   drawGoal(ctx, rect) {

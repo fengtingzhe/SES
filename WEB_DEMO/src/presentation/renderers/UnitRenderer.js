@@ -8,6 +8,7 @@ export class UnitRenderer {
     this.drawStones(state);
     for (const worker of state.workers) this.drawWorker(state, worker);
     for (const archer of state.archers) this.drawArcher(state, archer);
+    for (const refugee of state.refugees) this.drawRefugee(state, refugee);
     this.drawArrowShots(state);
     for (const monster of state.monsters) this.drawMonster(state, monster);
     this.drawPlayer(state);
@@ -63,7 +64,7 @@ export class UnitRenderer {
       this.drawProgress(point.x, point.y - 14, worker.progress);
     }
 
-    this.drawLabel(point.x, point.y + 18, worker.state);
+    this.drawLabel(point.x, point.y + 18, worker.job?.type === 'mine' ? 'mining' : worker.state);
   }
 
   drawPlayer(state) {
@@ -102,6 +103,18 @@ export class UnitRenderer {
     ctx.beginPath();
     ctx.arc(point.x + 4, point.y, 7, -Math.PI / 2, Math.PI / 2);
     ctx.stroke();
+  }
+
+  drawRefugee(state, refugee) {
+    const { ctx } = this.renderer;
+    const point = this.renderer.worldToScreen(refugee.x, refugee.y, state.camera);
+    ctx.fillStyle = '#c7b58a';
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, 7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#4a3524';
+    ctx.stroke();
+    this.drawLabel(point.x, point.y + 17, 'refugee');
   }
 
   drawArrowShots(state) {

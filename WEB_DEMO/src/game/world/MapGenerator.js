@@ -56,12 +56,16 @@ export class MapGenerator {
     addForestClusters(map, path, reservedIndexes);
     addDefenseSites(map, start);
     addDefenseSites(map, oldCamp);
+    const mines = createMines(map, path, reservedIndexes);
+    const refugeeFires = createRefugeeFires(map, path, reservedIndexes);
 
     return {
       map,
       start,
       goal,
       fogGates: createFogGates(map, path, reservedIndexes),
+      mines,
+      refugeeFires,
       camps: [{ x: start.x, y: start.y, type: 'village', active: true }],
       workers: createWorkers(start),
       looseStones: createStones(map, path, reservedIndexes)
@@ -185,6 +189,87 @@ function placeUtilityTile(map, center, offset, type) {
   });
 
   if (point) map.setType(point.x, point.y, type);
+}
+
+function createMines(map, path, reservedIndexes) {
+  const config = GameConfig.mine;
+  const count = randomInt(config.countMin, config.countMax);
+  const indexes = selectPathIndexes({
+    min: config.indexMin,
+    max: config.indexMax,
+    count,
+    reservedIndexes,
+    reservedGap: config.reservedGap,
+    spacing: config.spacing
+  });
+
+  return indexes
+    .map((x, index) => {
+      const center = path[x];
+      if (!center) return null;
+      const point = findGrassFeaturePoint(map, center.x, center.y, randomChoice(config.yOffsetCandidates));
+      if (!point) return null;
+      const mine = {
+        id: `mine-${index + 1}`,
+        x: point.x,
+        y: point.y,
+        occupied: false,
+        workerId: null,
+        progress: 0
+      };
+      map.setType(point.x, point.y, TILE_TYPES.MINE);
+      const tile = map.get(point.x, point.y);
+      if (tile) tile.mine = { mineId: mine.id, workerId: null, progress: 0 };
+      return mine;
+    })
+    .filter(Boolean);
+}
+
+function createRefugeeFires(map, path, reservedIndexes) {
+  const config = GameConfig.refugee;
+  const count = randomInt(config.fireCountMin, config.fireCountMax);
+  const indexes = selectPathIndexes({
+    min: config.fireIndexMin,
+    max: config.fireIndexMax,
+    count,
+    reservedIndexes,
+    reservedGap: config.fireReservedGap,
+    spacing: config.fireSpacing
+  });
+
+  return indexes
+    .map((x, index) => {
+      const center = path[x];
+      if (!center) return null;
+      const point = findGrassFeaturePoint(map, center.x, center.y, randomChoice(config.fireYOffsetCandidates));
+      if (!point) return null;
+      const fire = {
+        id: `refugee-fire-${index + 1}`,
+        x: point.x,
+        y: point.y,
+        count: randomInt(config.countPerCampMin, config.countPerCampMax)
+      };
+      map.setType(point.x, point.y, TILE_TYPES.REFUGEE_FIRE);
+      const tile = map.get(point.x, point.y);
+      if (tile) tile.refugeeFire = { fireId: fire.id, count: fire.count };
+      return fire;
+    })
+    .filter(Boolean);
+}
+
+function findGrassFeaturePoint(map, x, y, offsetY) {
+  const direction = Math.sign(offsetY) || 1;
+  const candidates = [
+    { x, y: y + offsetY },
+    { x: x - 1, y: y + offsetY },
+    { x: x + 1, y: y + offsetY },
+    { x, y: y + offsetY + direction },
+    { x, y: y + offsetY - direction },
+    { x: x - 2, y: y + offsetY },
+    { x: x + 2, y: y + offsetY }
+  ];
+
+  return candidates.find(point => map.get(point.x, point.y)?.type === TILE_TYPES.GRASS) || null;
 }
 
 function createFogGates(map, path, reservedIndexes) {

@@ -2,10 +2,11 @@ import { findPath, getWalkableNeighbors } from '../../engine/math/pathfinding.js
 import { GameConfig } from '../config/GameConfig.js';
 
 export class WorkerSystem {
-  constructor(campSystem, resourceSystem, defenseSystem) {
+  constructor(campSystem, resourceSystem, defenseSystem, mineSystem) {
     this.campSystem = campSystem;
     this.resourceSystem = resourceSystem;
     this.defenseSystem = defenseSystem;
+    this.mineSystem = mineSystem;
   }
 
   requestJob(state, target) {
@@ -25,6 +26,11 @@ export class WorkerSystem {
       return false;
     }
 
+    if (target.type === 'mine' && this.mineSystem?.isMineOccupied(state, target.mineId)) {
+      state.addMessage(GameConfig.text.mineOccupied, GameConfig.text.messageDuration.short);
+      return false;
+    }
+
     const workSpot = this.findWorkSpot(state, target);
     if (!workSpot) {
       state.addMessage(GameConfig.text.noWorkSpot, GameConfig.text.messageDuration.normal);
@@ -34,6 +40,11 @@ export class WorkerSystem {
     const path = findPath(state.map, worker, workSpot);
     if (!path) {
       state.addMessage(GameConfig.text.noPath, GameConfig.text.messageDuration.normal);
+      return false;
+    }
+
+    if (target.type === 'mine' && !this.mineSystem?.assignWorker(state, target.mineId, worker.id)) {
+      state.addMessage(GameConfig.text.mineOccupied, GameConfig.text.messageDuration.short);
       return false;
     }
 
@@ -52,10 +63,11 @@ export class WorkerSystem {
       type: target.type,
       x: target.x,
       y: target.y,
+      mineId: target.mineId || null,
       workSpot
     };
 
-    state.addMessage(GameConfig.text.workerSent, GameConfig.text.messageDuration.short);
+    state.addMessage(target.sentMessage || GameConfig.text.workerSent, GameConfig.text.messageDuration.short);
     return true;
   }
 
@@ -132,6 +144,11 @@ export class WorkerSystem {
   }
 
   updateWork(state, worker, dt) {
+    if (worker.job.type === 'mine') {
+      this.mineSystem?.updateMiningWorker(state, worker, dt);
+      return;
+    }
+
     const jobInfo = this.getJobInfo(worker.job.type);
     worker.progress += dt / jobInfo.duration;
 
@@ -190,9 +207,14 @@ export class WorkerSystem {
   }
 
   releaseWorkerReservation(state, worker) {
+    this.mineSystem?.releaseMineByWorker(state, worker.id);
+
     if (worker.job) {
       const targetTile = state.map.get(worker.job.x, worker.job.y);
-      if (targetTile) targetTile.reserved = false;
+      if (targetTile) {
+        targetTile.reserved = false;
+        targetTile.reservedBy = null;
+      }
     }
 
     for (const tile of state.map.tiles) {
@@ -209,6 +231,14 @@ export class WorkerSystem {
   }
 
   getJobInfo(type) {
+    if (type === 'mine') {
+      return {
+        duration: GameConfig.mine.workDuration,
+        startMessage: GameConfig.text.mineAssigned,
+        finishMessage: ''
+      };
+    }
+
     if (type === 'buildWall') {
       return {
         duration: GameConfig.wall.buildDuration,

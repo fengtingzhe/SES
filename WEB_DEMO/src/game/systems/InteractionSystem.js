@@ -13,10 +13,12 @@ const TARGETS = Object.fromEntries(
 );
 
 export class InteractionSystem {
-  constructor(workerSystem, resourceSystem, archerSystem) {
+  constructor(workerSystem, resourceSystem, archerSystem, mineSystem, refugeeSystem) {
     this.workerSystem = workerSystem;
     this.resourceSystem = resourceSystem;
     this.archerSystem = archerSystem;
+    this.mineSystem = mineSystem;
+    this.refugeeSystem = refugeeSystem;
   }
 
   update(state) {
@@ -28,6 +30,12 @@ export class InteractionSystem {
     if (target) {
       if (target.action === 'recruitArcher') {
         this.archerSystem.recruitArcher(state, target);
+      } else if (target.action === 'recruitRefugee') {
+        this.refugeeSystem.recruitRefugee(state, target);
+      } else if (target.action === 'mineOccupied') {
+        state.addMessage(GameConfig.text.mineOccupied, GameConfig.text.messageDuration.short);
+      } else if (target.action === 'refugeeFireEmpty') {
+        state.addMessage(GameConfig.text.refugeeFireEmpty, GameConfig.text.messageDuration.short);
       } else {
         this.workerSystem.requestJob(state, target);
       }
@@ -73,6 +81,57 @@ export class InteractionSystem {
         x,
         y,
         prompt: `招募弓箭手：Space 消耗 ${GameConfig.archer.recruitCost} 辉石`
+      };
+    }
+
+    if (tile.type === TILE_TYPES.MINE) {
+      const mine = this.mineSystem.getMineAt(state, x, y);
+      if (!mine) return null;
+      if (mine.workerId) {
+        return {
+          action: 'mineOccupied',
+          type: 'mineOccupied',
+          x,
+          y,
+          prompt: '这座矿山已有工人'
+        };
+      }
+
+      return {
+        action: 'workerJob',
+        type: 'mine',
+        mineId: mine.id,
+        cost: GameConfig.mine.assignCost,
+        label: '采矿',
+        needStoneText: GameConfig.text.needMoreStoneForMine,
+        x,
+        y,
+        prompt: `采矿：Space 派遣工人，消耗 ${GameConfig.mine.assignCost} 辉石`
+      };
+    }
+
+    if (tile.type === TILE_TYPES.REFUGEE_FIRE) {
+      const fire = this.refugeeSystem.getFireAt(state, x, y);
+      if (!fire) return null;
+      if (fire.count <= 0) {
+        return {
+          action: 'refugeeFireEmpty',
+          type: 'refugeeFireEmpty',
+          x,
+          y,
+          prompt: GameConfig.text.refugeeFireEmpty
+        };
+      }
+
+      return {
+        action: 'recruitRefugee',
+        type: 'recruitRefugee',
+        fireId: fire.id,
+        cost: GameConfig.refugee.recruitCost,
+        label: '招募流民',
+        x,
+        y,
+        prompt: `招募流民：Space 消耗 ${GameConfig.refugee.recruitCost} 辉石，剩余 ${fire.count}`
       };
     }
 

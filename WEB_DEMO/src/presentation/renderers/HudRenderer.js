@@ -10,17 +10,20 @@ export class HudRenderer {
     const summary = state.getWorkerSummary();
     const states = GameConfig.worker.states;
     const wallStats = getWallStats(state);
+    const mineStats = getMineStats(state);
+    const fireCount = state.refugeeFires.reduce((sum, fire) => sum + fire.count, 0);
     const lines = [
       `${state.version}`,
       `辉石：${state.player.stones}    工人：idle ${summary[states.idle]} / moving ${summary[states.moving]} / working ${summary[states.working]} / returning ${summary[states.returning]}`,
       `黑影：场上 ${state.monsters.length} / 今夜 ${state.monsterSpawnedTonight}/${GameConfig.monster.perNight}`,
       `防御：围墙 ${wallStats.built}/${wallStats.total}    弓箭手 ${state.archers.length}`,
+      `补给：矿山 ${mineStats.occupied}/${mineStats.total}    返程流民 ${state.refugees.length}    火堆剩余 ${fireCount}`,
       `第 ${state.day} 天 · ${state.phaseLabel}`,
       GameConfig.text.goalText,
       GameConfig.text.controlsText
     ];
 
-    this.panel(16, 16, Math.min(760, this.renderer.width - 32), 176);
+    this.panel(16, 16, Math.min(800, this.renderer.width - 32), 198);
     ctx.font = '14px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
@@ -79,4 +82,11 @@ function getWallStats(state) {
   }
 
   return { built, total };
+}
+
+function getMineStats(state) {
+  return {
+    total: state.mines.length,
+    occupied: state.mines.filter(mine => mine.workerId).length
+  };
 }

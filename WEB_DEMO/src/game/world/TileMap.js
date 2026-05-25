@@ -11,6 +11,8 @@ export const TILE_TYPES = {
   WALL_FOUNDATION: 'wall_foundation',
   WALL: 'wall',
   ARCHER_POST: 'archer_post',
+  MINE: 'mine',
+  REFUGEE_FIRE: 'refugee_fire',
   GOAL: 'goal'
 };
 
@@ -22,6 +24,8 @@ const WALKABLE_TYPES = new Set([
   TILE_TYPES.CAMP,
   TILE_TYPES.WALL_FOUNDATION,
   TILE_TYPES.ARCHER_POST,
+  TILE_TYPES.MINE,
+  TILE_TYPES.REFUGEE_FIRE,
   TILE_TYPES.GOAL
 ]);
 
@@ -58,6 +62,8 @@ export class TileMap {
       tile.hp = null;
       tile.maxHp = null;
     }
+    if (type !== TILE_TYPES.MINE) tile.mine = null;
+    if (type !== TILE_TYPES.REFUGEE_FIRE) tile.refugeeFire = null;
   }
 
   isWalkable(x, y) {

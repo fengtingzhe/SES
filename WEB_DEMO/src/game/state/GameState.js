@@ -12,6 +12,8 @@ export class GameState {
     this.start = world.start;
     this.goal = world.goal;
     this.fogGates = world.fogGates || [];
+    this.mines = world.mines || [];
+    this.refugeeFires = world.refugeeFires || [];
     this.camps = world.camps;
     this.workers = world.workers;
     this.looseStones = world.looseStones;
@@ -43,6 +45,9 @@ export class GameState {
     this.archers = [];
     this.nextArcherId = 1;
     this.arrowShots = [];
+    this.refugees = [];
+    this.nextRefugeeId = 1;
+    this.nextWorkerId = Math.max(0, ...this.workers.map(worker => worker.id)) + 1;
   }
 
   addMessage(text, duration = 3) {

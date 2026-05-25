@@ -11,6 +11,9 @@ import { ResourceSystem } from '../game/systems/ResourceSystem.js';
 import { MonsterSystem } from '../game/systems/MonsterSystem.js';
 import { DefenseSystem } from '../game/systems/DefenseSystem.js';
 import { ArcherSystem } from '../game/systems/ArcherSystem.js';
+import { MineSystem } from '../game/systems/MineSystem.js';
+import { RefugeeSystem } from '../game/systems/RefugeeSystem.js';
+import { PopulationSystem } from '../game/systems/PopulationSystem.js';
 import { TileRenderer } from '../presentation/renderers/TileRenderer.js';
 import { UnitRenderer } from '../presentation/renderers/UnitRenderer.js';
 import { HudRenderer } from '../presentation/renderers/HudRenderer.js';
@@ -26,11 +29,20 @@ export class GameApp {
     this.campSystem = new CampSystem();
     this.resourceSystem = new ResourceSystem();
     this.defenseSystem = new DefenseSystem();
-    this.workerSystem = new WorkerSystem(this.campSystem, this.resourceSystem, this.defenseSystem);
+    this.mineSystem = new MineSystem();
+    this.populationSystem = new PopulationSystem();
+    this.refugeeSystem = new RefugeeSystem(this.populationSystem);
+    this.workerSystem = new WorkerSystem(this.campSystem, this.resourceSystem, this.defenseSystem, this.mineSystem);
     this.monsterSystem = new MonsterSystem(this.workerSystem, this.defenseSystem);
     this.archerSystem = new ArcherSystem();
     this.playerSystem = new PlayerSystem();
-    this.interactionSystem = new InteractionSystem(this.workerSystem, this.resourceSystem, this.archerSystem);
+    this.interactionSystem = new InteractionSystem(
+      this.workerSystem,
+      this.resourceSystem,
+      this.archerSystem,
+      this.mineSystem,
+      this.refugeeSystem
+    );
     this.dayNightSystem = new DayNightSystem();
 
     this.tileRenderer = new TileRenderer(this.canvasRenderer);
@@ -73,8 +85,10 @@ export class GameApp {
     this.playerSystem.update(this.state, this.input, dt);
     this.resourceSystem.update(this.state, dt);
     this.workerSystem.update(this.state, dt);
+    this.mineSystem.update(this.state, dt);
     this.monsterSystem.update(this.state, dt);
     this.archerSystem.update(this.state, dt);
+    this.refugeeSystem.update(this.state, dt);
     this.interactionSystem.update(this.state);
 
     if (this.input.consumePress('action')) {
