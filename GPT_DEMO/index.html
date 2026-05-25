@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>《看海去》GPT_DEMO gpt.11.3</title>
+<title>《看海去》GPT_DEMO gpt.11.4</title>
 <style>
 html, body {
   margin: 0; height: 100%; overflow: hidden;
@@ -57,14 +57,15 @@ input { width: 100%; }
 <div id="top" class="box"></div>
 <button id="infoBtn">信息</button>
 <div id="hud" class="box hide"></div>
-<button id="verBtn">gpt.11.3 更新</button>
+<button id="verBtn">gpt.11.4 更新</button>
 <div id="ver" class="box">
-  <h1>gpt.11.3 目标优先级修正版</h1>
+  <h1>gpt.11.4 轻量自动战斗与围墙系统</h1>
   <ul>
-    <li>黑影优先拾取附近辉石。</li>
-    <li>没有辉石时，按 工人 > 弓箭手 > 返程流民 > 主角 选择目标。</li>
-    <li>玩家可通过投掷辉石吸引黑影，保护角色。</li>
-    <li>保留 gpt.11.2 全部功能。</li>
+    <li>黑影不再因主角进安全区直接消失，无目标时返回黑雾口。</li>
+    <li>黑影拥有 HP，弓箭手瞄准 0.6s 后射击（冷却 2.2s）。</li>
+    <li>新增围墙：营地旁有墙基，花费 2 辉石派工人建造，HP=3。</li>
+    <li>黑影会攻击围墙（每 1s 造成 1 伤害）。</li>
+    <li>目标优先级：辉石 > 围墙 > 工人 > 弓箭手 > 返程流民 > 主角。</li>
   </ul>
 </div>
 <button id="conBtn">Console</button>
@@ -85,7 +86,7 @@ input { width: 100%; }
 </div>
 <div id="help" class="box">
   <b>操作</b>：WASD / 方向键移动；<b>Space 互动</b>；R 重开。<br>
-  <b>gpt.11.3</b>：黑影优先拾取辉石；无辉石时按 工人>弓箭手>流民>主角 追击。<br>
+  <b>gpt.11.4</b>：轻量自动战斗与围墙系统。辉石 > 围墙 > 工人 > 弓箭手 > 流民 > 主角。<br>
   <b>F2</b> 开关文字标签 | <b>F3</b> 开关小地图（性能诊断）。
 </div>
 <div id="toast" class="box toast"></div>
@@ -145,7 +146,9 @@ const T = {
   AR:  13,  // 弓箭营
   FOX: 14,  // 狐狸成亲
   GO:  15,  // 远方信标（终点）
-  FS:  16   // 旧火塘
+  FS:  16,  // 旧火塘
+  WB:  17,  // 围墙地基
+  WL:  18   // 围墙
 };
 
 // 工具函数
@@ -210,7 +213,7 @@ function pass(x, y) {
   let c = cell(x, y);
   return c && [
     T.G, T.BR, T.V, T.C, T.S, T.MN, T.RF, T.FOG,
-    T.INV, T.HUT, T.AR, T.FOX, T.GO, T.FS
+    T.INV, T.HUT, T.AR, T.FOX, T.GO, T.FS, T.WB, T.WL
   ].includes(c.t);
 }
 
@@ -332,14 +335,15 @@ function resetGame() {
   nextId   = 3;
   foxEvent = null;
   reveal();
-  msg('gpt.11.3：目标优先级修正版已启动。');
+  msg('gpt.11.4：轻量自动战斗与围墙系统已启动。');
 }
 
 function mkUnit(type, x, y) {
   return {
     id: nextId++, type, x, y,
     state: 'idle', job: null, path: [], pi: 0, prog: 0, carry: 0,
-    lost: false, shoot: 0, homeX: START.x, homeY: START.y,
+    lost: false, shoot: 0, aimProg: 0,
+    homeX: START.x, homeY: START.y,
     flee: false, savedJob: null
   };
 }
@@ -438,6 +442,7 @@ function startArea() {
   cell(START.x + 2, START.y).t        = T.MN;
   cell(START.x + 2, START.y).mine     = { worker: null };
   spawnCareer(START.x, START.y);
+  spawnWallBases(START.x, START.y);
 }
 
 function spawnCareer(cx, cy) {
@@ -447,6 +452,18 @@ function spawnCareer(cx, cy) {
   ];
   for (let s of spots) {
     let c = cell(s.x, s.y); if (c && c.t === T.G) c.t = s.t;
+  }
+}
+
+// 在部落/营地附近生成围墙地基
+function spawnWallBases(cx, cy) {
+  let bases = [
+    { x: cx + 4, y: cy + 1 },
+    { x: cx - 2, y: cy + 1 }
+  ];
+  for (let b of bases) {
+    let c = cell(b.x, b.y);
+    if (c && c.t === T.G) { c.t = T.WB; c.job = null; c.lock = false; }
   }
 }
 
@@ -577,9 +594,10 @@ function infoAt(x, y) {
   else if (c.t === T.AR)            { act = 'archer'; labelText = '流民转弓箭手 1';   pri = 4; }
   else if (c.t === T.MN)            { act = 'mine';   labelText = c.mine?.worker ? '矿山已有工人' : '派工采矿'; pri = 5; }
   else if (c.t === T.FOX)           { act = 'fox';    labelText = '狐狸成亲';         pri = 6; }
-  else if (c.job === 'chop')        { act = 'chop';   labelText = '砍树 1';           pri = 7; }
-  else if (c.job === 'repair')      { act = 'repair'; labelText = '修桥 2';           pri = 8; }
-  else if (c.job === 'camp')        { act = 'camp';   labelText = '点亮旧火塘 2';     pri = 9; }
+  else if (c.t === T.WB)            { act = 'wall';   labelText = '建造围墙 2';       pri = 7; }
+  else if (c.job === 'chop')        { act = 'chop';   labelText = '砍树 1';           pri = 8; }
+  else if (c.job === 'repair')      { act = 'repair'; labelText = '修桥 2';           pri = 9; }
+  else if (c.job === 'camp')        { act = 'camp';   labelText = '点亮旧火塘 2';     pri = 10; }
 
   return act ? { x, y, act, label: labelText, pri, d: dist(pl, { x, y }) } : null;
 }
@@ -618,7 +636,7 @@ function interact() {
   if (it.act === 'mine')   return sendMine(it, c);
   if (it.act === 'fox')    return startFox(it, c);
 
-  let cost = (it.act === 'repair' || it.act === 'camp') ? 2 : 1;
+  let cost = (it.act === 'repair' || it.act === 'camp' || it.act === 'wall') ? 2 : 1;
   if (stone < cost) return msg('辉石不足。');
 
   let locs = it.act === 'camp' ? [{ x: it.x, y: it.y }] : neigh(it.x, it.y);
@@ -848,11 +866,12 @@ function finish(w) {
     msg('树障被清开，掉落 1 个辉石。');
   }
   if (type === 'repair') { c.t = T.BR; c.job = null; c.lock = false; msg('断桥修复完成。'); }
+  if (type === 'wall')   { c.t = T.WL; c.job = null; c.lock = false; c.hp = 3; msg('围墙建造完成。'); }
 
   if (type === 'camp') {
     c.t = T.C; c.job = null; c.lock = false;
     w.x = tx; w.y = ty;
-    spawnCareer(tx, ty); createMine(tx, ty);
+    spawnCareer(tx, ty); spawnWallBases(tx, ty); createMine(tx, ty);
     Object.assign(w, {
       job: null, state: 'idle', path: [], pi: 0, prog: 0, carry: 0,
       homeX: tx, homeY: ty, flee: false
@@ -908,14 +927,43 @@ function updateRefs(dt) {
 }
 
 // ============================================================
-// 弓箭手系统
+// 弓箭手系统（瞄准 → 射击 → 冷却）
 // ============================================================
 function updateArchers(dt) {
   for (let a of archers) {
-    a.shoot = Math.max(0, a.shoot - dt);
-    if (night() && a.shoot <= 0) {
-      let m = monsters.find(m => dist(a, m) < 5.5);
-      if (m) { m.dead = true; a.shoot = 2.2; msg('弓箭手驱散了一只黑林影。'); }
+    // 冷却中
+    if (a.state === 'cooldown') {
+      a.shoot -= dt;
+      if (a.shoot <= 0) { a.state = 'idle'; a.shoot = 0; }
+      continue;
+    }
+
+    // 瞄准中
+    if (a.state === 'aim') {
+      a.aimProg += dt;
+      // 检查目标是否还在射程内
+      let tm = monsters.find(m => !m.dead && !m.returning && dist(a, m) < 5.5);
+      if (!tm) { a.state = 'idle'; a.aimProg = 0; continue; }
+      if (a.aimProg >= 0.6) {
+        // 射击
+        a.aimProg = 0;
+        a.state = 'cooldown';
+        a.shoot = 2.2;
+        tm.hp = (tm.hp || 1) - 1;
+        if (tm.hp <= 0) {
+          tm.dead = true;
+          msg('弓箭手射杀了一只黑林影。');
+        } else {
+          msg('弓箭手射中黑林影。');
+        }
+      }
+      continue;
+    }
+
+    // 空闲：夜晚搜索射程内目标
+    if (night() && a.state === 'idle') {
+      let m = monsters.find(m => !m.dead && !m.returning && dist(a, m) < 5.5);
+      if (m) { a.state = 'aim'; a.aimProg = 0; }
     }
   }
 }
@@ -951,10 +999,10 @@ function spawnMonsters() {
   if (!hasTarget && !hasStone) return;
 
   let f = fs[rnd(fs.length)];
-  monsters.push({ x: f.x, y: f.y });  // 目标每帧由 findNearestTarget 动态计算
+  monsters.push({ x: f.x, y: f.y, hp: 1, atk: 0, returning: false });  // 目标每帧由 findNearestTarget 动态计算
 }
 
-// 每帧寻找目标：辉石优先，其次按 工人 > 弓箭手 > 返程流民 > 主角
+// 每帧寻找目标：辉石 > 围墙 > 工人 > 弓箭手 > 返程流民 > 主角
 function findNearestTarget(m) {
   // 第一优先级：拾取附近 8×8 范围内的辉石
   let stones = [];
@@ -969,21 +1017,34 @@ function findNearestTarget(m) {
     return { kind: 'stone', obj: stones[0] };
   }
 
-  // 第二优先级：工人（未失踪且不在安全区）
+  // 第二优先级：附近 8×8 范围内的围墙
+  let walls = [];
+  for (let y = Math.floor(m.y - 4); y <= Math.ceil(m.y + 4); y++) {
+    for (let x = Math.floor(m.x - 4); x <= Math.ceil(m.x + 4); x++) {
+      let c = cell(x, y);
+      if (c && c.t === T.WL && (c.hp || 0) > 0) walls.push({ x, y, hp: c.hp });
+    }
+  }
+  if (walls.length) {
+    walls.sort((a, b) => dist(m, a) - dist(m, b));
+    return { kind: 'wall', obj: walls[0] };
+  }
+
+  // 第三优先级：工人（未失踪且不在安全区）
   let workerTargets = workers.filter(w => !w.lost && !safe(w.x, w.y));
   if (workerTargets.length) {
     workerTargets.sort((a, b) => dist(m, a) - dist(m, b));
     return { kind: 'worker', obj: workerTargets[0] };
   }
 
-  // 第三优先级：弓箭手（不在安全区）
+  // 第四优先级：弓箭手（不在安全区）
   let archerTargets = archers.filter(a => !safe(a.x, a.y));
   if (archerTargets.length) {
     archerTargets.sort((a, b) => dist(m, a) - dist(m, b));
     return { kind: 'archer', obj: archerTargets[0] };
   }
 
-  // 第四优先级：返程流民（未失踪且不在安全区）
+  // 第五优先级：返程流民（未失踪且不在安全区）
   let refugeeTargets = refs.filter(r => !r.lost && !safe(r.x, r.y));
   if (refugeeTargets.length) {
     refugeeTargets.sort((a, b) => dist(m, a) - dist(m, b));
@@ -1000,13 +1061,54 @@ function findNearestTarget(m) {
 
 function updateMonsters(dt) {
   for (let m of monsters) {
+    // 已在返回黑雾口途中
+    if (m.returning) {
+      let f = nearestFog(m);
+      if (!f) { m.dead = true; continue; }
+      let d = dist(m, f);
+      if (d < .35) { m.dead = true; continue; }  // 抵达黑雾口消失
+      m.x += (f.x - m.x) / d * 1.6 * dt;
+      m.y += (f.y - m.y) / d * 1.6 * dt;
+      continue;
+    }
+
     let ti = findNearestTarget(m);
-    if (!ti || !night()) { m.dead = true; continue; }
+
+    // 无目标或白天结束：返回最近黑雾口
+    if (!ti || !night()) {
+      let f = nearestFog(m);
+      if (f) { m.returning = true; m.atk = 0; }
+      else { m.dead = true; }
+      continue;
+    }
 
     let t = ti.obj;
     let d = dist(m, t);
 
-    // 追击目标
+    // 围墙攻击逻辑
+    if (ti.kind === 'wall') {
+      if (d < .6) {
+        // 贴墙，蓄力攻击
+        m.atk += dt;
+        if (m.atk >= 1.0) {
+          m.atk = 0;
+          let wc = cell(Math.round(t.x), Math.round(t.y));
+          if (wc && wc.t === T.WL && wc.hp > 0) {
+            wc.hp--;
+            if (wc.hp <= 0) { blank(Math.round(t.x), Math.round(t.y)); msg('围墙被摧毁。'); }
+            else { msg('围墙受损 ' + wc.hp + '/3。'); }
+          }
+        }
+      } else {
+        // 逼近围墙
+        m.x += (t.x - m.x) / d * 1.6 * dt;
+        m.y += (t.y - m.y) / d * 1.6 * dt;
+        m.atk = 0;  // 离开重置攻击计时
+      }
+      continue;
+    }
+
+    // 追击角色/辉石目标
     if (d > .05) {
       m.x += (t.x - m.x) / d * 1.6 * dt;
       m.y += (t.y - m.y) / d * 1.6 * dt;
@@ -1015,29 +1117,44 @@ function updateMonsters(dt) {
     // 命中判定
     if (d < .35) {
       if (ti.kind === 'stone') {
-        // 黑影拾走辉石
         let sx = Math.round(t.x), sy = Math.round(t.y);
         let sc = cell(sx, sy);
         if (sc && sc.t === T.S) blank(sx, sy);
         msg('黑林影拾走了一枚辉石。');
+        m.dead = true;
       } else if (ti.kind === 'player') {
         hitPlayer();
+        m.dead = true;
       } else if (ti.kind === 'worker') {
         hitWorker(t.id);
+        m.dead = true;
       } else if (ti.kind === 'refugee') {
         let idx = refs.indexOf(t);
         if (idx >= 0) hitRef(idx);
+        m.dead = true;
       } else if (ti.kind === 'archer') {
         let idx = archers.indexOf(t);
         if (idx >= 0) {
           archers.splice(idx, 1);
           msg('一名弓箭手被黑林影拖走。');
         }
+        m.dead = true;
       }
-      m.dead = true;
     }
   }
   monsters = monsters.filter(m => !m.dead);
+}
+
+// 找最近黑雾口（用于黑影返回）
+function nearestFog(m) {
+  let best = null, bd = 999;
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++)
+      if (cell(x, y).t === T.FOG) {
+        let d = dist(m, { x, y });
+        if (d < bd) { bd = d; best = { x, y }; }
+      }
+  return best;
 }
 
 function hitPlayer() {
@@ -1176,7 +1293,7 @@ function drawTile(x, y) {
   let col = [
     '#183125', '#375b45', '#213f50', '#67462e', '#785535', '#5e6040', '#42583b',
     '#79bdb2', '#3b4239', '#6a5236', '#1a111f', '#3e244d', '#6a5330', '#4d5934',
-    '#5a3b52', '#315b76', '#4b4b3e'
+    '#5a3b52', '#315b76', '#4b4b3e', '#7a7050', '#8a8a7e'
   ][c.t] || '#355945';
 
   diamond(p, col, hover && hover.x === x && hover.y === y ? '#fff1b8' : 'rgba(255,255,255,.05)');
@@ -1203,6 +1320,8 @@ function drawTile(x, y) {
   if (c.t === T.FS)  label(p.x, p.y - 24 * z, c.lock ? '点亮中' : '旧火塘');
   if (c.t === T.V)   label(p.x, p.y - 24 * z, '部落');
   if (c.t === T.GO)  label(p.x, p.y - 24 * z, '远方信标');
+  if (c.t === T.WB)  label(p.x, p.y - 24 * z, '墙基');
+  if (c.t === T.WL)  label(p.x, p.y - 24 * z, '围墙 ' + (c.hp || 0) + '/3');
 
   // 当前互动提示
   if (hover && hover.x === x && hover.y === y)
@@ -1268,15 +1387,21 @@ function drawWorker(w) {
   else if (w.state === 'work')
     txt = (w.job?.type === 'chop' ? '砍树 ' :
            w.job?.type === 'repair' ? '修桥 ' :
+           w.job?.type === 'wall' ? '建墙 ' :
            w.job?.type === 'camp' ? '点火 ' : '工作 ') + Math.ceil(4 - w.prog);
   else if (w.state === 'return') txt = w.flee ? '撤退' : '返回';
   drawUnit(w, '#d5c59c', txt);
 }
-function drawArcher(a)  { drawUnit(a, '#b8d7a4', a.shoot > 0 ? '射击' : '弓箭手'); }
+function drawArcher(a) {
+  let txt = '弓箭手';
+  if (a.state === 'aim') txt = '瞄准';
+  else if (a.state === 'cooldown') txt = '冷却 ' + Math.ceil(a.shoot);
+  drawUnit(a, '#b8d7a4', txt);
+}
 function drawRef(r)     { drawUnit(r, '#f0d3aa', '流民返回'); }
 function drawPop(p)     { drawUnit(p, '#caa06a', '未转职流民'); }
 function drawFox(f)     { drawUnit(f, '#e49b55', '狐'); }
-function drawMonster(m) { drawUnit(m, '#111',    '黑林影'); }
+function drawMonster(m) { drawUnit(m, '#111', m.returning ? '返回' : '黑林影'); }
 
 // 玩家绘制
 function drawPlayer() {
@@ -1330,7 +1455,9 @@ function mini() {
         c.t === T.HUT ? '#c2a36a' :
         c.t === T.AR  ? '#9ab57d' :
         c.t === T.FOG ? '#7d4fa0' :
-        c.t === T.S   ? '#b6eee4' : '#496d54';
+        c.t === T.S   ? '#b6eee4' :
+        c.t === T.WB  ? '#9a8a60' :
+        c.t === T.WL  ? '#b0b0a8' : '#496d54';
       ctx.fillRect(x0 + x / W * s, y0 + y / H * s, Math.ceil(s / W), Math.ceil(s / H));
     }
 
@@ -1349,12 +1476,12 @@ function drawHud() {
   topHud.innerHTML = `第 ${day} 天 · ${phText()}${pl.ctrlInv ? ' · 颠倒森林' : ''}`;
 
   hud.innerHTML =
-    `<h1>《看海去》GPT_DEMO gpt.11.3</h1>
+    `<h1>《看海去》GPT_DEMO gpt.11.4</h1>
     辉石：<b>${stone}</b>　玩家：<b>${safe(pl.x, pl.y) ? '安全圈内' : night() ? '危险' : '安全'}</b><br>
     工人：<b>${idle}/${alive}</b> 空闲　弓箭手：<b>${archers.length}</b>　未转职流民：<b>${pop.length}</b><br>
     返程流民：<b>${refs.length}</b>　怪物：<b>${monsters.length}</b>　狐狸奇遇：<b>${foxEvent?.active ? '进行中' : '未触发/已结束'}</b><br>
     当前互动：<b>${hover ? hover.label : '面前/附近无可互动目标；Space 可放置辉石'}</b><br>
-    <span class="small">gpt.11.3：黑影优先拾取辉石；无辉石时按 工人>弓箭手>返程流民>主角 追击。玩家可通过投掷辉石吸引黑影。<br>F2 开关文字标签 | F3 开关小地图（性能诊断）</span>`;
+    <span class="small">gpt.11.4：轻量自动战斗与围墙系统。弓箭手瞄准→射击→冷却。黑影无目标时返回黑雾口。围墙 HP=3 可被黑影攻击。<br>F2 开关文字标签 | F3 开关小地图（性能诊断）</span>`;
 }
 
 // ============================================================
