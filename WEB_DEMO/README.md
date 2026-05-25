@@ -1,58 +1,10 @@
-# WEB_DEMO：Web Demo 原型工作区
+# WEB_DEMO：看海去正式 Web Demo 工程
 
 ## 定位
 
-`WEB_DEMO/` 用于保存 Web Demo 原型工程。
+`WEB_DEMO/` 是《看海去》的正式 Web Demo 工程工作区，不是 `GPT_DEMO/` 的临时草图。
 
-这是当前工作流的第一阶段：
-
-```text
-v0.x = Web Demo 原型阶段
-```
-
-目标是快速验证核心玩法、界面信息、交互反馈和基础数值，而不是完成最终游戏工程。
-
----
-
-## 推荐结构
-
-```text
-WEB_DEMO/
-├── README.md
-├── run_web_demo.bat
-├── package.json
-├── index.html
-├── styles.css
-├── game.js
-├── Data/
-│   └── config/
-├── Assets/
-├── Tools/
-├── Tests/
-├── Docs/
-└── Temp/
-```
-
----
-
-## 放什么
-
-- Web Demo 页面；
-- Web Demo 脚本；
-- Web Demo 样式；
-- Web Demo 配置；
-- Web Demo 测试；
-- Web Demo 启动脚本；
-- Web Demo 临时资源。
-
----
-
-## 不放什么
-
-- 不放 Unity 源码；
-- 不放未来 Unity 自建项目；
-- 不放最终构建输出；
-- 不放与 Web Demo 无关的大型资源。
+当前阶段目标：先建立干净、可运行、可维护的 Vite + Canvas 工程骨架，再逐步从 `GPT_DEMO gpt.11.7` 迁移核心玩法。
 
 ---
 
@@ -73,7 +25,7 @@ WEB_DEMO Template Ready
 
 ---
 
-## 实际目录结构
+## 当前实际目录结构
 
 ```text
 WEB_DEMO/
@@ -124,27 +76,35 @@ WEB_DEMO/
 ## 资源与数值原则
 
 1. 策划频繁调整的内容优先放入 `public/assets/data/csv/`。
-2. 图片、音频、字体等运行时资源放入 `public/assets/`。
-3. `index.html` 不写复杂游戏逻辑，只加载入口脚本。
-4. `src/` 内代码应模块化，避免把正式玩法继续堆在单文件中。
-5. 本模板不包含具体游戏玩法；复制到具体项目后，再在 `WEB_DEMO/` 内实现项目专属系统。
+2. 结构化运行时配置、资源清单、调试预设优先放入 `public/assets/data/json/`。
+3. 图片、音频、字体等运行时资源放入 `public/assets/`。
+4. `index.html` 不写复杂游戏逻辑，只加载入口脚本。
+5. `src/` 内代码应模块化，避免把正式玩法继续堆在单文件中。
+
+---
+
+## 与 GPT_DEMO 的关系
+
+```text
+GPT_DEMO gpt.11.7 = 玩法验证基线
+WEB_DEMO v0.x = 正式 Web 原型线
+```
+
+WEB_DEMO 后续应逐步复现 GPT_DEMO gpt.11.7 的核心循环，但不要直接把 GPT_DEMO 的单文件结构搬进 `index.html`。
 
 ---
 
 ## 当前状态
 
 ```text
-阶段：正式 Web 游戏工程骨架
-玩法：未实现
+阶段：WEB_DEMO v0.1 工程骨架阶段
+玩法：未迁移
 目标：验证工程可运行、目录清晰、资源与 CSV 入口明确
+当前入口：index.html -> /src/main.js
 ```
 
 ---
 
-## 规则来源
+## 规则说明
 
-详细规则见：
-
-```text
-DESIGN_HUB/15_WEB_DEMO_WORKSPACE.md
-```
+部分旧项目文档仍可能提到 `WEB_DEMO/Data/config/`、`game.js`、`styles.css` 等历史结构。当前 WEB_DEMO 以本文件记录的 Vite + `src/` + `public/assets/` 结构为准，旧路径后续再统一清理。
