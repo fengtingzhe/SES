@@ -1,4 +1,0 @@
-id,type,move_speed,description
-player,player,4.2,玩家
-worker,worker,2.2,工人类单位
-enemy,enemy,1.6,敌人类单位
