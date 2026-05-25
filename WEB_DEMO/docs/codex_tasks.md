@@ -4,150 +4,142 @@
 
 ---
 
-# 当前任务：WEB_DEMO v0.2 核心循环迁移
+# 当前任务：WEB_DEMO v0.2.1 地图轻随机修正
 
 ## 任务名称
 
 ```text
-WEB_DEMO v0.2 核心循环迁移
+WEB_DEMO v0.2.1 地图轻随机修正
 ```
 
 ## 任务背景
 
 ```text
-1. GPT_DEMO/gpt.11.7 已经验证了《看海去》的完整玩法草图。
-2. WEB_DEMO 已经建立了 Vite + Canvas 正式工程骨架。
-3. 当前 WEB_DEMO/index.html 是薄入口，只加载 /src/main.js。
-4. 本轮目标不是复现全部 GPT_DEMO，而是先迁移最小核心循环。
-5. WEB_DEMO 是正式 Web 游戏工程，禁止再把大量玩法逻辑写回 index.html。
+1. WEB_DEMO v0.2 已经基本完成最小核心循环迁移。
+2. 当前版本已实现主角移动、辉石拾取与放置、工人派遣、砍树、修桥、点亮营地、日夜循环和阶段目标。
+3. 但代码审核发现 MapGenerator.generate() 目前是固定生成：起点、树障、河流、旧营地、终点、森林簇、辉石位置基本固定。
+4. v0.2 任务卡要求“小型随机地图”和“地图可以随机生成”，因此当前版本未完全满足验收标准。
+5. 本轮只做地图轻随机修正，不扩展新玩法。
 ```
 
 ## 任务目标
 
-在 WEB_DEMO 中实现《看海去》的最小核心玩法循环：
+只修正 v0.2 中 `MapGenerator.generate()` 过于固定的问题，让每次 R 重开或刷新页面时地图布局有轻微随机变化，但仍保证核心路径可达。
+
+核心目标：
 
 ```text
-探索 → 收集辉石 → 派遣工人 → 砍树 / 修桥 / 点亮营地 → 日夜变化 → 到达阶段目标
+每次生成地图有差异；
+起点仍在左侧，终点仍在右侧；
+主路径始终可推进；
+树障、河流、旧营地、辉石、森林簇位置有轻微变化；
+不破坏 v0.2 的核心玩法循环。
 ```
 
 ---
 
 # 本轮只做
 
-## 一、基础运行结构
+## 一、地图轻随机
 
-1. 保持 `WEB_DEMO/index.html` 为薄入口。
-2. 保持 Vite 工程可运行。
-3. 从 `WEB_DEMO/src/main.js` 启动游戏。
-4. 可以新建并使用以下模块：
+允许修改 `WEB_DEMO/src/game/world/MapGenerator.js`，为地图生成加入轻随机。
+
+必须保留：
 
 ```text
-WEB_DEMO/src/app/GameApp.js
-WEB_DEMO/src/engine/loop/GameLoop.js
-WEB_DEMO/src/engine/input/InputManager.js
-WEB_DEMO/src/engine/render/CanvasRenderer.js
-WEB_DEMO/src/engine/math/pathfinding.js
-WEB_DEMO/src/game/state/GameState.js
-WEB_DEMO/src/game/world/MapGenerator.js
-WEB_DEMO/src/game/world/TileMap.js
-WEB_DEMO/src/game/systems/PlayerSystem.js
-WEB_DEMO/src/game/systems/InteractionSystem.js
-WEB_DEMO/src/game/systems/WorkerSystem.js
-WEB_DEMO/src/game/systems/DayNightSystem.js
-WEB_DEMO/src/game/systems/CampSystem.js
-WEB_DEMO/src/game/systems/ResourceSystem.js
-WEB_DEMO/src/presentation/renderers/TileRenderer.js
-WEB_DEMO/src/presentation/renderers/UnitRenderer.js
-WEB_DEMO/src/presentation/renderers/HudRenderer.js
+1. 地图左侧有起点部落。
+2. 地图右侧有阶段终点。
+3. 主路径从起点通往终点。
+4. 中途仍有可砍树障。
+5. 中途仍有河流和断桥。
+6. 中途仍有旧营地。
+7. 地图上仍有可拾取辉石。
+8. 森林仍形成边界和阻挡感。
+9. 玩家理论上可以通过砍树、修桥、点亮营地推进到终点。
 ```
 
-如果为了速度需要合并少量模块，可以接受，但不要把所有逻辑堆在 `main.js`。
+可以轻随机：
+
+```text
+1. 主路径的上下起伏。
+2. 树障出现的大致段落。
+3. 河流 / 断桥出现的大致段落。
+4. 旧营地出现的大致段落。
+5. 终点附近的具体位置。
+6. 辉石的具体位置和数量。
+7. 森林簇的位置。
+8. 地图宽高可以保持当前值，也可以小范围调整。
+```
+
+轻随机要求：
+
+```text
+1. 每次调用 GameState.createNew() / MapGenerator.generate() 都应生成略有不同的地图。
+2. 变化幅度要可控，不能出现完全混乱地图。
+3. 不要生成不可达地图。
+4. 不要让树障、河流、旧营地、终点重叠到不合理位置。
+5. 不要让所有辉石刷在不可达区域。
+6. 不需要实现种子输入，直接使用 Math.random() 可以接受。
+```
 
 ---
 
-## 二、核心玩法内容
+## 二、文档更新
 
-### 1. 主角移动
-
-- WASD / 方向键移动。
-- 使用 Canvas 绘制。
-- 保持 2D 俯视或 45 度等距风格均可，优先保证清晰可玩。
-
-### 2. 小型随机地图
-
-- 生成一个可探索地图。
-- 包含起点部落。
-- 包含阶段终点。
-- 包含森林阻挡、普通地面、断桥、河流、可点亮营地。
-- 保证从起点到终点理论上可通过砍树 / 修桥 / 点营地逐步推进。
-
-### 3. 辉石资源
-
-- 地图上生成可拾取辉石。
-- 玩家靠近或踩到辉石后拾取。
-- HUD 显示当前辉石数量。
-- Space 在无互动目标时可以放置一枚辉石。
-- 本轮辉石放置只需要显示在地面并随时间消失，不需要实现黑影诱敌。
-
-### 4. 工人派遣
-
-- 起点部落初始拥有若干工人，建议 2～3 个。
-- 玩家靠近可互动目标并按 Space，可以派遣空闲工人。
-- 工人命令一旦下达，本轮不可取消。
-- 工人会移动到目标位置。
-- 工人有状态显示或调试文字：
+完成后更新：
 
 ```text
-idle / moving / working / returning
+WEB_DEMO/docs/changelog.md
+WEB_DEMO/docs/acceptance_tests.md
+WEB_DEMO/docs/known_issues.md
 ```
 
-### 5. 砍树
+### changelog.md
 
-- 某些森林格为可砍树障。
-- 玩家互动后，消耗辉石派工人砍树。
-- 工人到达后显示工作进度。
-- 完成后该格变为可通行地面。
-- 可掉落 1 个辉石，作为奖励。
+新增：
 
-### 6. 修桥
+```markdown
+## v0.2.1
 
-- 河流中存在断桥格。
-- 玩家互动后，消耗辉石派工人修桥。
-- 完成后断桥变为可通行桥。
+状态：地图轻随机修正
 
-### 7. 点亮营地
+内容：
+- 为 MapGenerator.generate() 加入轻随机。
+- 树障、河流 / 断桥、旧营地、辉石和森林簇位置不再完全固定。
+- 保留起点在左侧、终点在右侧、主路径可推进的结构。
+- 修正 v0.2 中“地图可以随机生成”验收项未完全满足的问题。
+```
 
-- 地图上存在可点亮的旧营火 / 营地。
-- 玩家互动后，消耗辉石派工人点亮。
-- 完成后成为新营地。
-- 新营地本轮只需要作为视觉节点和工人返回点，不需要生成工棚、弓箭营、围墙。
+### acceptance_tests.md
 
-### 8. 工人返回
-
-- 工人完成任务后返回最近已激活营地或部落。
-- 如果最近营地逻辑复杂，本轮可以先返回部落，但必须在 `WEB_DEMO/docs/known_issues.md` 中记录：
+新增 v0.2.1 验收项：
 
 ```text
-工人完成任务后是否应返回最近营地，后续版本继续验证。
+测试名称：WEB_DEMO v0.2.1 地图轻随机
+前置条件：已安装 Node.js
+操作步骤：
+1. 进入 WEB_DEMO 目录
+2. 执行 npm install
+3. 执行 npm run dev
+4. 打开浏览器
+5. 记录当前地图中树障、河流、旧营地、辉石的大致位置
+6. 按 R 重开，重复观察 3 次
+预期结果：
+1. 每次重开地图布局有可见差异
+2. 起点仍在左侧
+3. 终点仍在右侧
+4. 地图仍包含树障、河流 / 断桥、旧营地和辉石
+5. 主路径仍可通过砍树、修桥、点亮营地推进到终点
+6. 浏览器控制台无 JavaScript 报错
 ```
 
-### 9. 日夜循环
+### known_issues.md
 
-- 实现白天 / 黄昏 / 夜晚循环。
-- HUD 显示当前第几天和昼夜阶段。
-- 本轮夜晚不生成黑影。
-- 夜晚可以有轻微画面变暗效果。
-
-### 10. 阶段目标
-
-- 地图远端有一个阶段目标点，例如“远方信标”或“旅程终点”。
-- 玩家抵达后显示提示：
+更新：
 
 ```text
-你抵达了阶段终点。
+将“地图节奏仍是代码内生成”保留为已知问题，但说明 v0.2.1 已加入轻随机；后续仍需要 CSV / JSON 配置化。
 ```
-
-- 不需要做真正结局。
 
 ---
 
@@ -168,33 +160,11 @@ idle / moving / working / returning
 10. 不接入音乐音效。
 11. 不做 CSV 读取逻辑。
 12. 不做存档系统。
-13. 不做复杂 UI。
+13. 不改视觉视角，不把俯视角改成 45 度等距。
 14. 不修改 GPT_DEMO。
-15. 不把 GPT_DEMO/index.html 的全部代码直接复制进 WEB_DEMO/index.html。
-16. 不把大量玩法逻辑堆在 WEB_DEMO/src/main.js。
-```
-
----
-
-# 允许参考
-
-可以只读参考：
-
-```text
-GPT_DEMO/index.html
-GPT_DEMO/README.md
-WEB_DEMO/README.md
-WEB_DEMO/docs/changelog.md
-WEB_DEMO/docs/acceptance_tests.md
-WEB_DEMO/docs/known_issues.md
-```
-
-其中：
-
-```text
-GPT_DEMO 是玩法参考，不是代码结构参考。
-WEB_DEMO/README.md 是工程结构参考。
-当前开发必须服从 WEB_DEMO 的模块化结构。
+15. 不修改 WEB_DEMO/index.html。
+16. 不修改 WEB_DEMO/src/main.js。
+17. 不把大量玩法逻辑堆进 MapGenerator 以外的文件。
 ```
 
 ---
@@ -204,20 +174,19 @@ WEB_DEMO/README.md 是工程结构参考。
 允许修改：
 
 ```text
-WEB_DEMO/src/**
+WEB_DEMO/src/game/world/MapGenerator.js
 WEB_DEMO/docs/changelog.md
 WEB_DEMO/docs/acceptance_tests.md
 WEB_DEMO/docs/known_issues.md
-WEB_DEMO/README.md
 ```
 
-如有必要，可以修改：
+如果发现地图随机必须轻微配合其他文件，可以修改：
 
 ```text
-WEB_DEMO/public/assets/data/csv/**
+WEB_DEMO/src/game/world/TileMap.js
 ```
 
-但本轮不需要做 CSV 读取。
+但必须说明原因。
 
 ---
 
@@ -227,101 +196,14 @@ WEB_DEMO/public/assets/data/csv/**
 
 ```text
 GPT_DEMO/**
+WEB_DEMO/index.html
+WEB_DEMO/src/main.js
 AI_RULES/**
 DESIGN_HUB/**
 AI_TASKS/**
 根目录 README.md
 PROJECT_STATUS.md
 ```
-
-除非任务过程中发现必须同步状态文档，否则不要改这些文件。
-
----
-
-# 最低工程结构要求
-
-`main.js` 应该只负责启动，例如：
-
-```js
-import { GameApp } from './app/GameApp.js';
-
-const app = new GameApp({
-  root: document.getElementById('game-root')
-});
-
-app.start();
-```
-
-不要让 `main.js` 变成新的大单文件。
-
----
-
-# 表现要求
-
-当前可以使用简单图形表现：
-
-```text
-玩家：圆形或小人图标
-工人：小圆点或小人
-森林：绿色块 / 树形符号
-河流：蓝色块
-断桥：棕色块
-营地：火焰或圆圈
-辉石：浅蓝色小点
-目标点：蓝色信标
-```
-
-不要求美术精细，但必须清楚可读。
-
----
-
-# HUD 要显示
-
-HUD 至少显示：
-
-```text
-1. 当前版本：WEB_DEMO v0.2
-2. 辉石数量
-3. 工人数量和状态概览
-4. 当前昼夜阶段
-5. 当前目标
-6. 基础操作说明
-```
-
----
-
-# 文档更新要求
-
-完成后必须更新：
-
-## 1. WEB_DEMO/docs/changelog.md
-
-新增：
-
-```markdown
-## v0.2.0
-
-状态：核心循环迁移
-
-内容：
-- 实现主角移动
-- 实现小型随机地图
-- 实现辉石拾取与放置
-- 实现工人派遣
-- 实现砍树
-- 实现修桥
-- 实现点亮营地
-- 实现日夜循环
-- 实现阶段目标
-```
-
-## 2. WEB_DEMO/docs/acceptance_tests.md
-
-新增 v0.2 验收标准。
-
-## 3. WEB_DEMO/docs/known_issues.md
-
-记录本轮未做内容和可能遗留问题。
 
 ---
 
@@ -333,23 +215,19 @@ HUD 至少显示：
 1. 在 WEB_DEMO 目录下执行 npm install 成功。
 2. 执行 npm run dev 成功。
 3. 浏览器打开后无 JS 控制台报错。
-4. 玩家可以使用 WASD / 方向键移动。
-5. 地图可以随机生成。
-6. 玩家可以拾取辉石，HUD 数量增加。
-7. 玩家可以放置辉石，地面出现辉石光点，并会随时间消失。
-8. 玩家可以派工人砍树。
-9. 工人到达树障后工作，完成后树障变为可通行地面。
-10. 玩家可以派工人修桥。
-11. 修桥完成后断桥变为可通行。
-12. 玩家可以派工人点亮营地。
-13. 营地点亮后在地图上有明显表现。
-14. 工人完成任务后会返回部落或营地。
-15. 昼夜循环正常，HUD 显示阶段。
-16. 玩家抵达阶段终点后出现完成提示。
-17. WEB_DEMO/index.html 仍然只加载 /src/main.js。
-18. WEB_DEMO/src/main.js 没有堆积大量游戏逻辑。
-19. GPT_DEMO 没有被修改。
-20. changelog、acceptance_tests、known_issues 已更新。
+4. 连续按 R 重开 3 次，地图布局有可见差异。
+5. 每次地图仍有左侧起点部落。
+6. 每次地图仍有右侧阶段终点。
+7. 每次地图仍有树障。
+8. 每次地图仍有河流和断桥。
+9. 每次地图仍有旧营地。
+10. 每次地图仍有可拾取辉石。
+11. 每次地图理论上都能通过砍树、修桥、点亮营地推进到阶段终点。
+12. v0.2 已实现的玩家移动、辉石拾取 / 放置、工人派遣、砍树、修桥、点亮营地、日夜循环、阶段目标不被破坏。
+13. WEB_DEMO/index.html 仍然只加载 /src/main.js。
+14. WEB_DEMO/src/main.js 仍然只负责启动 GameApp。
+15. GPT_DEMO 没有被修改。
+16. changelog、acceptance_tests、known_issues 已更新。
 ```
 
 ---
@@ -360,10 +238,10 @@ HUD 至少显示：
 
 ```text
 1. 修改了哪些文件。
-2. 新增了哪些模块。
-3. 如何运行。
-4. 已完成哪些验收标准。
-5. 哪些内容留到 v0.3。
+2. MapGenerator 的随机化策略是什么。
+3. 如何保证地图仍可推进到终点。
+4. 如何运行。
+5. 已完成哪些验收标准。
 6. 是否存在已知问题。
 ```
 
@@ -378,13 +256,16 @@ WEB_DEMO/docs/codex_tasks.md
 WEB_DEMO/README.md
 WEB_DEMO/docs/acceptance_tests.md
 WEB_DEMO/docs/known_issues.md
-GPT_DEMO/README.md
+WEB_DEMO/src/game/world/MapGenerator.js
 ```
 
-如需理解玩法细节，再只读参考：
+必要时再读取：
 
 ```text
-GPT_DEMO/index.html
+WEB_DEMO/src/game/state/GameState.js
+WEB_DEMO/src/game/world/TileMap.js
+WEB_DEMO/src/game/systems/WorkerSystem.js
+WEB_DEMO/src/engine/math/pathfinding.js
 ```
 
-但不要把 GPT_DEMO 的单文件结构搬进 WEB_DEMO。
+不要读取或复制 GPT_DEMO/index.html，本轮不需要参考 GPT_DEMO 代码。
