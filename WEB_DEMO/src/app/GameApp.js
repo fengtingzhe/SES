@@ -9,6 +9,8 @@ import { DayNightSystem } from '../game/systems/DayNightSystem.js';
 import { CampSystem } from '../game/systems/CampSystem.js';
 import { ResourceSystem } from '../game/systems/ResourceSystem.js';
 import { MonsterSystem } from '../game/systems/MonsterSystem.js';
+import { DefenseSystem } from '../game/systems/DefenseSystem.js';
+import { ArcherSystem } from '../game/systems/ArcherSystem.js';
 import { TileRenderer } from '../presentation/renderers/TileRenderer.js';
 import { UnitRenderer } from '../presentation/renderers/UnitRenderer.js';
 import { HudRenderer } from '../presentation/renderers/HudRenderer.js';
@@ -23,10 +25,12 @@ export class GameApp {
 
     this.campSystem = new CampSystem();
     this.resourceSystem = new ResourceSystem();
-    this.workerSystem = new WorkerSystem(this.campSystem, this.resourceSystem);
-    this.monsterSystem = new MonsterSystem(this.workerSystem);
+    this.defenseSystem = new DefenseSystem();
+    this.workerSystem = new WorkerSystem(this.campSystem, this.resourceSystem, this.defenseSystem);
+    this.monsterSystem = new MonsterSystem(this.workerSystem, this.defenseSystem);
+    this.archerSystem = new ArcherSystem();
     this.playerSystem = new PlayerSystem();
-    this.interactionSystem = new InteractionSystem(this.workerSystem, this.resourceSystem);
+    this.interactionSystem = new InteractionSystem(this.workerSystem, this.resourceSystem, this.archerSystem);
     this.dayNightSystem = new DayNightSystem();
 
     this.tileRenderer = new TileRenderer(this.canvasRenderer);
@@ -70,6 +74,7 @@ export class GameApp {
     this.resourceSystem.update(this.state, dt);
     this.workerSystem.update(this.state, dt);
     this.monsterSystem.update(this.state, dt);
+    this.archerSystem.update(this.state, dt);
     this.interactionSystem.update(this.state);
 
     if (this.input.consumePress('action')) {

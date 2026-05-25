@@ -7,6 +7,8 @@ export class UnitRenderer {
     this.drawFogGates(state);
     this.drawStones(state);
     for (const worker of state.workers) this.drawWorker(state, worker);
+    for (const archer of state.archers) this.drawArcher(state, archer);
+    this.drawArrowShots(state);
     for (const monster of state.monsters) this.drawMonster(state, monster);
     this.drawPlayer(state);
   }
@@ -86,6 +88,39 @@ export class UnitRenderer {
     ctx.fill();
   }
 
+  drawArcher(state, archer) {
+    const { ctx } = this.renderer;
+    const point = this.renderer.worldToScreen(archer.x, archer.y, state.camera);
+    ctx.fillStyle = '#9bcf8f';
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#20321c';
+    ctx.stroke();
+
+    ctx.strokeStyle = '#e7d08a';
+    ctx.beginPath();
+    ctx.arc(point.x + 4, point.y, 7, -Math.PI / 2, Math.PI / 2);
+    ctx.stroke();
+  }
+
+  drawArrowShots(state) {
+    const { ctx } = this.renderer;
+    ctx.save();
+    ctx.strokeStyle = '#f5e6aa';
+    ctx.lineWidth = 2;
+    for (const shot of state.arrowShots) {
+      const from = this.renderer.worldToScreen(shot.fromX, shot.fromY, state.camera);
+      const to = this.renderer.worldToScreen(shot.toX, shot.toY, state.camera);
+      ctx.globalAlpha = Math.max(0.15, shot.ttl / 0.16);
+      ctx.beginPath();
+      ctx.moveTo(from.x, from.y);
+      ctx.lineTo(to.x, to.y);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   drawMonster(state, monster) {
     const { ctx } = this.renderer;
     const point = this.renderer.worldToScreen(monster.x, monster.y, state.camera);
@@ -94,15 +129,26 @@ export class UnitRenderer {
     ctx.beginPath();
     ctx.ellipse(point.x, point.y, 11, 15, 0.2, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = monster.state === 'chasing' ? '#d9b3ff' : '#5c6170';
+    ctx.strokeStyle = monster.state === 'attacking_wall' ? '#ffb37a' : monster.state === 'chasing' ? '#d9b3ff' : '#5c6170';
     ctx.lineWidth = 2;
     ctx.stroke();
+    this.drawMonsterHp(point.x, point.y - 20, monster);
     ctx.fillStyle = '#f0e8ff';
     ctx.beginPath();
     ctx.arc(point.x - 4, point.y - 4, 2, 0, Math.PI * 2);
     ctx.arc(point.x + 4, point.y - 4, 2, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
+  }
+
+  drawMonsterHp(x, y, monster) {
+    const maxHp = monster.maxHp || 1;
+    const hp = Math.max(0, monster.hp ?? maxHp);
+    const { ctx } = this.renderer;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+    ctx.fillRect(x - 10, y, 20, 4);
+    ctx.fillStyle = '#b884ff';
+    ctx.fillRect(x - 10, y, 20 * Math.min(1, hp / maxHp), 4);
   }
 
   drawProgress(x, y, value) {

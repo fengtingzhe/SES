@@ -1,8 +1,9 @@
 import { GameConfig } from '../config/GameConfig.js';
 
 export class MonsterSystem {
-  constructor(workerSystem) {
+  constructor(workerSystem, defenseSystem) {
     this.workerSystem = workerSystem;
+    this.defenseSystem = defenseSystem;
   }
 
   update(state, dt) {
@@ -52,6 +53,9 @@ export class MonsterSystem {
       id: state.nextMonsterId++,
       x: gate.x,
       y: gate.y,
+      hp: GameConfig.monster.maxHp,
+      maxHp: GameConfig.monster.maxHp,
+      wallAttackTimer: 0,
       originGateId: gate.id,
       state: GameConfig.monster.states.marching,
       targetType: 'camp',
@@ -65,16 +69,22 @@ export class MonsterSystem {
     const survivors = [];
 
     for (const monster of state.monsters) {
+      if ((monster.hp ?? GameConfig.monster.maxHp) <= 0) continue;
+
       const target = this.selectTarget(state, monster);
       monster.targetType = target.type;
       monster.targetId = target.id || null;
-      monster.state = target.type === 'camp'
+      monster.state = target.type === 'wall' && distance(monster, target) <= GameConfig.monster.attackWallRange
+        ? GameConfig.monster.states.attackingWall
+        : target.type === 'camp'
         ? GameConfig.monster.states.marching
         : GameConfig.monster.states.chasing;
 
-      this.moveToward(monster, target, dt);
+      const shouldHoldToAttackWall = target.type === 'wall'
+        && distance(monster, target) <= GameConfig.monster.attackWallRange;
+      if (!shouldHoldToAttackWall) this.moveToward(monster, target, dt);
 
-      if (!this.resolveContact(state, monster, target)) {
+      if (!this.resolveContact(state, monster, target, dt)) {
         survivors.push(monster);
       }
     }
@@ -123,6 +133,11 @@ export class MonsterSystem {
       };
     }
 
+    const wall = this.defenseSystem.findNearestWall(state, monster, range);
+    if (wall) {
+      return wall;
+    }
+
     if (distance(monster, state.player) <= range) {
       return {
         type: 'player',
@@ -143,7 +158,7 @@ export class MonsterSystem {
     };
   }
 
-  resolveContact(state, monster, target) {
+  resolveContact(state, monster, target, dt) {
     const targetDistance = distance(monster, target);
 
     if (target.type === 'stone' && targetDistance <= GameConfig.monster.consumeStoneRange) {
@@ -156,6 +171,15 @@ export class MonsterSystem {
       this.workerSystem.captureWorker(state, target.entity);
       state.addMessage(GameConfig.text.workerCaptured, GameConfig.text.messageDuration.normal);
       return true;
+    }
+
+    if (target.type === 'wall' && targetDistance <= GameConfig.monster.attackWallRange) {
+      monster.wallAttackTimer = (monster.wallAttackTimer ?? 0) - dt;
+      if (monster.wallAttackTimer <= 0) {
+        this.defenseSystem.damageWall(state, target, GameConfig.monster.wallDamage);
+        monster.wallAttackTimer = GameConfig.monster.wallAttackInterval;
+      }
+      return false;
     }
 
     if (target.type === 'player' && targetDistance <= GameConfig.monster.touchPlayerRange) {

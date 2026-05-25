@@ -1,4 +1,5 @@
 import { GameConfig } from '../config/GameConfig.js';
+import { TILE_TYPES } from '../world/TileMap.js';
 
 const TARGETS = Object.fromEntries(
   Object.entries(GameConfig.jobs).map(([type, job]) => [
@@ -12,9 +13,10 @@ const TARGETS = Object.fromEntries(
 );
 
 export class InteractionSystem {
-  constructor(workerSystem, resourceSystem) {
+  constructor(workerSystem, resourceSystem, archerSystem) {
     this.workerSystem = workerSystem;
     this.resourceSystem = resourceSystem;
+    this.archerSystem = archerSystem;
   }
 
   update(state) {
@@ -24,7 +26,11 @@ export class InteractionSystem {
   handleAction(state) {
     const target = this.findTarget(state);
     if (target) {
-      this.workerSystem.requestJob(state, target);
+      if (target.action === 'recruitArcher') {
+        this.archerSystem.recruitArcher(state, target);
+      } else {
+        this.workerSystem.requestJob(state, target);
+      }
       state.hover = this.findTarget(state);
       return;
     }
@@ -56,12 +62,41 @@ export class InteractionSystem {
 
   getTargetAt(state, x, y) {
     const tile = state.map.get(x, y);
-    if (!tile || tile.reserved) return null;
+    if (!tile) return null;
+
+    if (tile.type === TILE_TYPES.ARCHER_POST && this.archerSystem.isPostActive(state, x, y)) {
+      return {
+        action: 'recruitArcher',
+        type: 'recruitArcher',
+        cost: GameConfig.archer.recruitCost,
+        label: '招募弓箭手',
+        x,
+        y,
+        prompt: `招募弓箭手：Space 消耗 ${GameConfig.archer.recruitCost} 辉石`
+      };
+    }
+
+    if (tile.reserved) return null;
+
+    if (tile.type === TILE_TYPES.WALL_FOUNDATION) {
+      return {
+        action: 'workerJob',
+        type: 'buildWall',
+        cost: GameConfig.wall.buildCost,
+        label: '建造围墙',
+        needStoneText: GameConfig.text.needMoreStoneForWall,
+        x,
+        y,
+        prompt: `建造围墙：Space 派遣工人，消耗 ${GameConfig.wall.buildCost} 辉石`
+      };
+    }
+
     const target = TARGETS[tile.type];
     if (!target) return null;
 
     return {
       ...target,
+      action: 'workerJob',
       x,
       y,
       prompt: GameConfig.text.interactionPrompt(target.label, target.cost)

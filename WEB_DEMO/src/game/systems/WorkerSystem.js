@@ -2,16 +2,20 @@ import { findPath, getWalkableNeighbors } from '../../engine/math/pathfinding.js
 import { GameConfig } from '../config/GameConfig.js';
 
 export class WorkerSystem {
-  constructor(campSystem, resourceSystem) {
+  constructor(campSystem, resourceSystem, defenseSystem) {
     this.campSystem = campSystem;
     this.resourceSystem = resourceSystem;
+    this.defenseSystem = defenseSystem;
   }
 
   requestJob(state, target) {
     const states = GameConfig.worker.states;
 
     if (state.player.stones < target.cost) {
-      state.addMessage(GameConfig.text.needStone(target.cost), GameConfig.text.messageDuration.short);
+      const message = target.needStoneText
+        ? target.needStoneText(target.cost)
+        : GameConfig.text.needStone(target.cost);
+      state.addMessage(message, GameConfig.text.messageDuration.short);
       return false;
     }
 
@@ -34,7 +38,10 @@ export class WorkerSystem {
     }
 
     const tile = state.map.get(target.x, target.y);
-    if (tile) tile.reserved = true;
+    if (tile) {
+      tile.reserved = true;
+      tile.reservedBy = worker.id;
+    }
 
     state.player.stones -= target.cost;
     worker.state = states.moving;
@@ -73,7 +80,7 @@ export class WorkerSystem {
 
   findWorkSpot(state, target) {
     const candidates = [
-      ...(state.map.isWalkable(target.x, target.y) ? [{ x: target.x, y: target.y }] : []),
+      ...(target.type !== 'buildWall' && state.map.isWalkable(target.x, target.y) ? [{ x: target.x, y: target.y }] : []),
       ...getWalkableNeighbors(state.map, target.x, target.y)
     ];
 
@@ -121,11 +128,11 @@ export class WorkerSystem {
   startWorking(state, worker) {
     worker.state = GameConfig.worker.states.working;
     worker.progress = 0;
-    state.addMessage(GameConfig.jobs[worker.job.type].startMessage, GameConfig.text.messageDuration.short);
+    state.addMessage(this.getJobInfo(worker.job.type).startMessage, GameConfig.text.messageDuration.short);
   }
 
   updateWork(state, worker, dt) {
-    const jobInfo = GameConfig.jobs[worker.job.type];
+    const jobInfo = this.getJobInfo(worker.job.type);
     worker.progress += dt / jobInfo.duration;
 
     if (worker.progress < 1) return;
@@ -154,6 +161,10 @@ export class WorkerSystem {
       state.map.setType(x, y, GameConfig.jobs.lightCamp.resultTile);
       state.camps.push({ x, y, type: 'camp', active: true });
       state.addMessage(GameConfig.jobs.lightCamp.finishMessage, GameConfig.text.messageDuration.normal);
+    }
+
+    if (type === 'buildWall') {
+      this.defenseSystem.finishWall(state, x, y);
     }
   }
 
@@ -195,5 +206,17 @@ export class WorkerSystem {
       if (tile.mine?.worker === worker.id) tile.mine.worker = null;
       if (tile.mine?.workerId === worker.id) tile.mine.workerId = null;
     }
+  }
+
+  getJobInfo(type) {
+    if (type === 'buildWall') {
+      return {
+        duration: GameConfig.wall.buildDuration,
+        startMessage: GameConfig.text.wallBuildStarted,
+        finishMessage: GameConfig.text.wallBuilt
+      };
+    }
+
+    return GameConfig.jobs[type];
   }
 }

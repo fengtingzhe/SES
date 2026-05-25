@@ -8,6 +8,9 @@ export const TILE_TYPES = {
   VILLAGE: 'village',
   OLD_CAMP: 'old_camp',
   CAMP: 'camp',
+  WALL_FOUNDATION: 'wall_foundation',
+  WALL: 'wall',
+  ARCHER_POST: 'archer_post',
   GOAL: 'goal'
 };
 
@@ -17,6 +20,8 @@ const WALKABLE_TYPES = new Set([
   TILE_TYPES.VILLAGE,
   TILE_TYPES.OLD_CAMP,
   TILE_TYPES.CAMP,
+  TILE_TYPES.WALL_FOUNDATION,
+  TILE_TYPES.ARCHER_POST,
   TILE_TYPES.GOAL
 ]);
 
@@ -48,6 +53,11 @@ export class TileMap {
     if (!tile) return;
     tile.type = type;
     tile.reserved = false;
+    tile.reservedBy = null;
+    if (type !== TILE_TYPES.WALL) {
+      tile.hp = null;
+      tile.maxHp = null;
+    }
   }
 
   isWalkable(x, y) {

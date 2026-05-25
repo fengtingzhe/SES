@@ -10,7 +10,7 @@ import { TILE_TYPES } from '../world/TileMap.js';
  */
 export const GameConfig = {
   // 当前 Web Demo 展示版本号。会显示在 HUD 上；改动时应同步 changelog。
-  version: 'WEB_DEMO v0.4',
+  version: 'WEB_DEMO v0.5',
 
   /**
    * 玩家相关配置：控制主角移动、拾取范围和抵达目标判定。
@@ -136,6 +136,57 @@ export const GameConfig = {
   },
 
   /**
+   * 围墙系统配置：控制墙基布局、建墙成本、建造时间、生命值和摧毁后的反馈。
+   * 围墙会改变营地周边的夜晚防御强度，成本或生命值过高会让黑影压力明显下降。
+   */
+  wall: {
+    // 建造一段围墙需要消耗的辉石数量，单位：辉石数量。过低会让早期防御过快成型。
+    buildCost: 2,
+    // 建造围墙所需工作时间，单位：秒。过长会让建墙节奏拖沓，过短会削弱工人派遣风险。
+    buildDuration: 4,
+    // 围墙最大生命值，单位：HP。黑影攻击会扣除该值；数值越大，夜晚防御越稳。
+    maxHp: 3,
+    // 围墙被摧毁后是否恢复为墙基。true 表示玩家后续可以重建；false 会永久清空该防御点。
+    restoreFoundationOnDestroy: true,
+    // 墙基相对营地中心的固定偏移，单位：格。位置过密会堵路，过远会无法保护营地。
+    foundationOffsets: [
+      { x: -2, y: -1 },
+      { x: -2, y: 1 },
+      { x: 2, y: -1 },
+      { x: 2, y: 1 }
+    ]
+  },
+
+  /**
+   * 弓箭手系统配置：控制招募入口、招募成本、射程、攻击频率和伤害。
+   * 弓箭手是自动防守单位，射程或伤害过高会让黑影在靠近前被稳定清除。
+   */
+  archer: {
+    // 招募一名弓箭手需要消耗的辉石数量，单位：辉石数量。过低会让防守人数膨胀过快。
+    recruitCost: 2,
+    // 弓箭手自动攻击范围，单位：格。过大会让防守覆盖全屏，过小会难以支援围墙。
+    attackRange: 5,
+    // 弓箭手攻击间隔，单位：秒。数值越小，射击越频繁，黑影承压越大。
+    attackCooldown: 1.2,
+    // 单次攻击造成的黑影伤害，单位：HP。过高会让黑影生命值配置失去意义。
+    damage: 1,
+    // 弓箭手生成点相对营地中心的偏移，单位：格。用于分散站位，避免单位重叠。
+    spawnOffsets: [
+      { x: -1.2, y: -1.2 },
+      { x: -1.2, y: 1.2 },
+      { x: 1.2, y: -1.2 },
+      { x: 1.2, y: 1.2 }
+    ],
+    // 弓箭训练点相对营地中心的固定偏移，单位：格。位置过远会让招募入口不清晰。
+    postOffsets: [
+      { x: 0, y: -2 },
+      { x: 0, y: 2 }
+    ],
+    // 训练点距离已激活营地多近才可使用，单位：格。过小会导致旧营地点亮后训练点失效。
+    postActiveRange: 3
+  },
+
+  /**
    * 昼夜循环配置：控制一天时长、阶段比例和画面暗化。
    * end 为一天进度比例，取值范围 0～1；overlay 为暗化透明度，取值范围 0～1。
    */
@@ -158,6 +209,8 @@ export const GameConfig = {
    * 这些参数直接影响夜晚压力与辉石诱敌价值，调大感知或速度会明显增加工人损失风险。
    */
   monster: {
+    // 黑影最大生命值，单位：HP。被弓箭手攻击会扣除；过高会削弱弓箭手反馈。
+    maxHp: 2,
     // 每晚最多生成黑影数量，单位：只。数值越大夜晚压力越强，过高会让早期资源无法承受。
     perNight: 2,
     // 黑影移动速度，单位：格 / 秒。过高会让辉石诱敌和工人撤离几乎没有反应时间。
@@ -172,6 +225,12 @@ export const GameConfig = {
     touchPlayerRange: 0.6,
     // 黑影抵达默认营地目标后的消散半径，单位：格。当前不实现营地伤害，抵达后仅清除实体。
     reachCampRange: 0.7,
+    // 黑影攻击围墙的间隔，单位：秒。过短会让围墙快速崩塌，过长会让围墙几乎无损。
+    wallAttackInterval: 1.2,
+    // 黑影每次攻击围墙造成的伤害，单位：HP。过高会使低级围墙失去拖延价值。
+    wallDamage: 1,
+    // 黑影攻击围墙的判定距离，单位：格。过大时会隔空拆墙，过小会出现贴近后不攻击。
+    attackWallRange: 0.7,
     // 夜晚分批生成间隔，单位：秒。过短会让同一晚压力集中爆发，过长可能导致天亮前无法生成完。
     spawnInterval: 4,
     // 玩家被黑影触碰提示的冷却时间，单位：秒。防止连续接触时消息刷屏。
@@ -183,7 +242,9 @@ export const GameConfig = {
       // 默认朝最近已点亮营地或起点部落行进。
       marching: 'marching',
       // 4 格内发现更高优先级目标后转向追逐。
-      chasing: 'chasing'
+      chasing: 'chasing',
+      // 接近围墙后停留攻击。
+      attackingWall: 'attacking_wall'
     }
   },
 
@@ -341,6 +402,18 @@ export const GameConfig = {
     playerTouchedByMonster: '黑影擦过你身边，火光之外很危险。',
     // 天亮清除残留黑影时显示。
     monstersClearedAtDay: '天色转亮，残留的黑影退回雾中。',
+    // 工人开始建造围墙时显示。
+    wallBuildStarted: '工人开始建造围墙。',
+    // 围墙建成时显示。
+    wallBuilt: '围墙建好了。',
+    // 围墙被黑影摧毁时显示。
+    wallDestroyed: '围墙被黑影摧毁了。',
+    // 招募弓箭手成功时显示。
+    archerRecruited: '一名弓箭手加入了防守。',
+    // 辉石不足以建墙时显示；count 单位：辉石数量。
+    needMoreStoneForWall: count => `建墙需要 ${count} 个辉石。`,
+    // 辉石不足以招募弓箭手时显示；count 单位：辉石数量。
+    needMoreStoneForArcher: count => `招募弓箭手需要 ${count} 个辉石。`,
     // 拾取辉石时显示；count 单位：辉石数量。
     pickupStone: count => `拾取辉石 +${count}`,
     // 辉石不足以派遣工人时显示；count 单位：辉石数量。
@@ -354,7 +427,7 @@ export const GameConfig = {
     // 成功派遣工人时显示。
     workerSent: '已派遣工人。',
     // HUD 当前目标文案。
-    goalText: '目标：收集辉石，派工人清路，抵达远方信标',
+    goalText: '目标：收集辉石，开路并建设防御，抵达远方信标',
     // HUD 操作说明文案。
     controlsText: '操作：WASD / 方向键移动，Space 互动或放置辉石，R 重开',
     // 无互动目标时底部提示文案。

@@ -10,6 +10,9 @@ const COLORS = {
   [TILE_TYPES.VILLAGE]: '#7d6538',
   [TILE_TYPES.OLD_CAMP]: '#4f4a40',
   [TILE_TYPES.CAMP]: '#8b5832',
+  [TILE_TYPES.WALL_FOUNDATION]: '#6b7168',
+  [TILE_TYPES.WALL]: '#4e3b2d',
+  [TILE_TYPES.ARCHER_POST]: '#5f5a3a',
   [TILE_TYPES.GOAL]: '#245d80'
 };
 
@@ -47,6 +50,9 @@ export class TileRenderer {
     if (tile.type === TILE_TYPES.VILLAGE) this.drawVillage(ctx, rect);
     if (tile.type === TILE_TYPES.OLD_CAMP) this.drawOldCamp(ctx, rect);
     if (tile.type === TILE_TYPES.CAMP) this.drawCamp(ctx, rect);
+    if (tile.type === TILE_TYPES.WALL_FOUNDATION) this.drawWallFoundation(ctx, rect, tile.reserved);
+    if (tile.type === TILE_TYPES.WALL) this.drawWall(ctx, rect, tile);
+    if (tile.type === TILE_TYPES.ARCHER_POST) this.drawArcherPost(ctx, rect);
     if (tile.type === TILE_TYPES.GOAL) this.drawGoal(ctx, rect);
   }
 
@@ -103,6 +109,44 @@ export class TileRenderer {
     ctx.beginPath();
     ctx.arc(rect.x + rect.size / 2, rect.y + rect.size / 2, 5, 0, Math.PI * 2);
     ctx.fill();
+  }
+
+  drawWallFoundation(ctx, rect, reserved) {
+    ctx.fillStyle = reserved ? '#b9ad82' : '#a9afa6';
+    ctx.fillRect(rect.x + 8, rect.y + 10, 4, rect.size - 18);
+    ctx.fillRect(rect.x + rect.size - 12, rect.y + 10, 4, rect.size - 18);
+    ctx.strokeStyle = '#3f453f';
+    ctx.beginPath();
+    ctx.moveTo(rect.x + 7, rect.y + 13);
+    ctx.lineTo(rect.x + rect.size - 7, rect.y + 19);
+    ctx.moveTo(rect.x + 7, rect.y + 24);
+    ctx.lineTo(rect.x + rect.size - 7, rect.y + 18);
+    ctx.stroke();
+  }
+
+  drawWall(ctx, rect, tile) {
+    const hpRatio = Math.max(0, Math.min(1, (tile.hp ?? tile.maxHp ?? 1) / (tile.maxHp || 1)));
+    ctx.fillStyle = hpRatio > 0.5 ? '#6f4b35' : '#3f302b';
+    ctx.fillRect(rect.x + 5, rect.y + 8, rect.size - 10, rect.size - 14);
+    ctx.strokeStyle = '#211815';
+    ctx.strokeRect(rect.x + 5, rect.y + 8, rect.size - 10, rect.size - 14);
+    ctx.fillStyle = '#c8b58c';
+    ctx.font = '10px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`${tile.hp ?? tile.maxHp}`, rect.x + rect.size / 2, rect.y + rect.size / 2);
+  }
+
+  drawArcherPost(ctx, rect) {
+    ctx.fillStyle = '#d5c27a';
+    ctx.beginPath();
+    ctx.arc(rect.x + rect.size / 2, rect.y + rect.size / 2, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#3d3421';
+    ctx.beginPath();
+    ctx.moveTo(rect.x + 10, rect.y + 22);
+    ctx.quadraticCurveTo(rect.x + rect.size / 2, rect.y + 7, rect.x + rect.size - 10, rect.y + 22);
+    ctx.stroke();
   }
 
   drawGoal(ctx, rect) {

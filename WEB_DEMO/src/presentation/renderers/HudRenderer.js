@@ -9,16 +9,18 @@ export class HudRenderer {
     const { ctx } = this.renderer;
     const summary = state.getWorkerSummary();
     const states = GameConfig.worker.states;
+    const wallStats = getWallStats(state);
     const lines = [
       `${state.version}`,
       `辉石：${state.player.stones}    工人：idle ${summary[states.idle]} / moving ${summary[states.moving]} / working ${summary[states.working]} / returning ${summary[states.returning]}`,
       `黑影：场上 ${state.monsters.length} / 今夜 ${state.monsterSpawnedTonight}/${GameConfig.monster.perNight}`,
+      `防御：围墙 ${wallStats.built}/${wallStats.total}    弓箭手 ${state.archers.length}`,
       `第 ${state.day} 天 · ${state.phaseLabel}`,
       GameConfig.text.goalText,
       GameConfig.text.controlsText
     ];
 
-    this.panel(16, 16, Math.min(760, this.renderer.width - 32), 154);
+    this.panel(16, 16, Math.min(760, this.renderer.width - 32), 176);
     ctx.font = '14px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
@@ -62,4 +64,19 @@ export class HudRenderer {
       ctx.fillText(GameConfig.text.goalReached, this.renderer.width / 2, this.renderer.height / 2 - 80);
     }
   }
+}
+
+function getWallStats(state) {
+  let built = 0;
+  let total = 0;
+
+  for (const tile of state.map.tiles) {
+    if (tile.type === 'wall') {
+      built += 1;
+      total += 1;
+    }
+    if (tile.type === 'wall_foundation') total += 1;
+  }
+
+  return { built, total };
 }

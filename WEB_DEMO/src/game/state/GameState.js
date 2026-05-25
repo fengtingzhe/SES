@@ -40,6 +40,9 @@ export class GameState {
     this.monsterSpawnTimer = 0;
     this.monsterWasNight = false;
     this.monsterTouchMessageTimer = 0;
+    this.archers = [];
+    this.nextArcherId = 1;
+    this.arrowShots = [];
   }
 
   addMessage(text, duration = 3) {

@@ -54,6 +54,8 @@ export class MapGenerator {
 
     const reservedIndexes = [treeIndex, riverIndex, campIndex, goalIndex];
     addForestClusters(map, path, reservedIndexes);
+    addDefenseSites(map, start);
+    addDefenseSites(map, oldCamp);
 
     return {
       map,
@@ -156,6 +158,33 @@ function createStones(map, path, reservedIndexes) {
   });
 
   return stonePoints;
+}
+
+function addDefenseSites(map, center) {
+  for (const offset of GameConfig.wall.foundationOffsets) {
+    placeUtilityTile(map, center, offset, TILE_TYPES.WALL_FOUNDATION);
+  }
+
+  for (const offset of GameConfig.archer.postOffsets) {
+    placeUtilityTile(map, center, offset, TILE_TYPES.ARCHER_POST);
+  }
+}
+
+function placeUtilityTile(map, center, offset, type) {
+  const preferred = [
+    { x: center.x + offset.x, y: center.y + offset.y },
+    { x: center.x + offset.x + Math.sign(offset.x || 1), y: center.y + offset.y },
+    { x: center.x + offset.x, y: center.y + offset.y + Math.sign(offset.y || 1) },
+    { x: center.x + offset.x - Math.sign(offset.x || 1), y: center.y + offset.y },
+    { x: center.x + offset.x, y: center.y + offset.y - Math.sign(offset.y || 1) }
+  ];
+
+  const point = preferred.find(candidate => {
+    const tile = map.get(candidate.x, candidate.y);
+    return tile?.type === TILE_TYPES.GRASS;
+  });
+
+  if (point) map.setType(point.x, point.y, type);
 }
 
 function createFogGates(map, path, reservedIndexes) {
