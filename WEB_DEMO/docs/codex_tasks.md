@@ -20,6 +20,7 @@ WEB_DEMO v0.3 GameConfig 基础配置集中化
 3. 但后续功能迁移过程中，所有静态数值、文案、生成区间、成本、时长、速度、范围、数量等配置，不能继续散落在各系统代码里。
 4. 本轮目标是建立一个中间层配置文件 GameConfig.js。
 5. 未来当核心功能基本完成后，再把 GameConfig.js 拆分到 CSV / JSON 配置文件中。
+6. GameConfig 面向策划长期维护，因此字段名、字段用途、单位、影响范围必须写清楚，不能只给一堆英文 key 和数字。
 ```
 
 ## 任务目标
@@ -38,7 +39,8 @@ WEB_DEMO/src/game/config/GameConfig.js
 当前阶段不做 CSV / JSON 读取；
 当前阶段不新增玩法；
 当前阶段只建立 GameConfig 作为统一静态配置中心；
-后续功能迁移时，Codex 不允许把静态数值继续散落在系统文件中。
+后续功能迁移时，Codex 不允许把静态数值继续散落在系统文件中；
+GameConfig 必须对策划可读：字段用途、单位、影响范围、调参风险要尽量用中文注释写清楚。
 ```
 
 ---
@@ -200,11 +202,69 @@ export const GameConfig = {
 2. 但必须能覆盖当前 v0.2.1 中散落的主要静态数值和文案。
 3. 不要为了“完美配置化”而做复杂抽象。
 4. GameConfig.js 只是中间层，未来会拆分 CSV / JSON。
+5. 上面的示例 key 是英文，但最终 GameConfig.js 必须配套充分中文注释，确保策划能看懂每个字段的用途。
 ```
 
 ---
 
-## 二、迁移当前已有硬编码
+## 二、字段注释与策划可读性要求
+
+`GameConfig.js` 未来会由策划长期查看和维护，因此必须满足以下要求：
+
+```text
+1. 每个一级配置段必须有中文块注释，说明这一组配置控制什么系统。
+2. 每个关键字段必须有中文行注释，说明字段含义、单位和影响范围。
+3. 所有时间字段必须说明单位，例如“秒”。
+4. 所有速度字段必须说明单位，例如“格 / 秒”。
+5. 所有范围字段必须说明坐标意义或段落意义，例如“主路径 x 方向索引范围”。
+6. 所有比例字段必须说明取值范围，例如 0～1。
+7. 所有 overlay / alpha 字段必须说明是透明度，取值范围 0～1。
+8. 所有 cost 字段必须说明消耗的是辉石。
+9. 所有 tile 字段必须说明对应 TileMap.js 中的 tile type。
+10. 所有 message / text 字段必须说明显示位置或触发时机。
+11. 如果某个字段调大或调小会明显影响玩法节奏，要在注释中说明风险。
+12. 不要只写英文 key，不写中文解释。
+```
+
+推荐写法示例：
+
+```js
+// 玩家相关配置：控制主角移动、拾取范围等基础手感。
+player: {
+  // 玩家移动速度，单位：格 / 秒。数值越大，移动越快；过高会导致操作不精确。
+  moveSpeed: 4.2,
+
+  // 拾取辉石的判定半径，单位：格。玩家距离辉石小于该值时自动拾取。
+  pickupRadius: 0.65,
+},
+
+// 昼夜循环配置：控制一天时长、阶段比例和夜晚遮罩强度。
+dayNight: {
+  // 一天总时长，单位：秒。数值越大，昼夜循环越慢。
+  dayLength: 72,
+
+  // 昼夜阶段表。end 表示该阶段结束时的一天进度，取值范围 0～1。
+  phases: [
+    // overlay 表示画面暗化遮罩透明度，取值范围 0～1；0 表示不变暗。
+    { id: 'day', label: '白天', end: 0.58, overlay: 0 },
+  ],
+},
+
+// 地图生成配置：控制地图尺寸、主路径、关键节点区间和随机资源数量。
+map: {
+  // 地图宽度，单位：格。
+  width: 46,
+
+  // 树障出现的主路径 x 索引最小值。与 treeIndexMax 一起决定树障大致出现在旅程前段。
+  treeIndexMin: 11,
+}
+```
+
+如果字段很多，允许通过分组注释减少重复，但不能让策划无法判断字段用途。
+
+---
+
+## 三、迁移当前已有硬编码
 
 请把当前 v0.2.1 中已有的静态配置尽量迁移到 GameConfig。
 
@@ -241,7 +301,7 @@ export const GameConfig = {
 
 ---
 
-## 三、需要改造的文件
+## 四、需要改造的文件
 
 优先修改这些文件，让它们从 GameConfig 读取静态配置：
 
@@ -301,6 +361,7 @@ WEB_DEMO/src/presentation/renderers/UnitRenderer.js
 ```text
 所有新增系统的静态配置、数值、文案、生成区间、成本、时长、速度、范围、数量，必须优先写入 GameConfig.js。
 不要把静态配置散落在系统文件中。
+GameConfig 新增字段时必须同步写清楚中文注释，说明字段用途、单位、影响范围和调参风险。
 ```
 
 例如后续黑影系统，不允许在系统文件中直接硬编码：
@@ -315,8 +376,13 @@ const MONSTERS_PER_NIGHT = 2;
 
 ```js
 GameConfig.monster = {
+  // 黑影移动速度，单位：格 / 秒。
   speed: 1.6,
+
+  // 黑影局部感知范围，单位：格。只响应该范围内的辉石、工人、围墙等目标。
   tacticalRange: 4,
+
+  // 每晚最多生成的黑影数量。
   perNight: 2,
 };
 ```
@@ -325,8 +391,13 @@ GameConfig.monster = {
 
 ```js
 GameConfig.wall = {
+  // 建造围墙需要消耗的辉石数量。
   cost: 2,
+
+  // 围墙生命值。黑影攻击会扣除该值。
   hp: 3,
+
+  // 建造围墙所需时间，单位：秒。
   buildTime: 4,
 };
 ```
@@ -335,12 +406,18 @@ GameConfig.wall = {
 
 ```js
 GameConfig.mine = {
+  // 矿工采集一次辉石需要的时间，单位：秒。
   gatherTime: 5,
+
+  // 单次采矿产出的辉石数量。
   yieldStone: 1,
 };
 
 GameConfig.refugee = {
+  // 流民返程移动速度，单位：格 / 秒。
   returnSpeed: 1.7,
+
+  // 流民火堆刷新冷却时间，单位：秒。
   fireCooldown: 10,
 };
 ```
@@ -412,6 +489,7 @@ PROJECT_STATUS.md
 - 新增 WEB_DEMO/src/game/config/GameConfig.js。
 - 将 v0.2.1 中散落在系统代码中的主要静态数值集中到 GameConfig。
 - 玩家、工人、任务、辉石、昼夜、地图生成和基础文案开始从 GameConfig 读取。
+- 为 GameConfig 的关键字段补充中文注释，说明字段用途、单位、影响范围和调参风险。
 - 不做 CSV / JSON 读取，GameConfig 作为未来拆分配置文件前的中间层。
 ```
 
@@ -430,14 +508,16 @@ PROJECT_STATUS.md
 5. 完成 v0.2.1 核心循环验收：移动、拾取辉石、放置辉石、派工人砍树、修桥、点亮营地、观察昼夜、抵达阶段终点
 6. 修改 GameConfig.js 中一个安全参数，例如 player.moveSpeed 或 dayNight.dayLength
 7. 重新运行，确认对应效果变化
+8. 打开 GameConfig.js，检查主要字段是否有中文注释，能否让策划理解字段含义、单位和影响范围
 预期结果：
 1. 浏览器控制台无 JavaScript 报错
 2. v0.2.1 核心玩法不被破坏
 3. GameConfig.js 存在并被多个系统引用
 4. 主要静态数值不再散落在各系统文件中
 5. 修改 GameConfig 的关键参数能影响游戏表现
-6. WEB_DEMO/index.html 仍只加载 /src/main.js
-7. WEB_DEMO/src/main.js 仍只负责启动 GameApp
+6. GameConfig 的关键配置字段有足够中文注释，策划能理解每个参数用途
+7. WEB_DEMO/index.html 仍只加载 /src/main.js
+8. WEB_DEMO/src/main.js 仍只负责启动 GameApp
 ```
 
 ## 3. WEB_DEMO/docs/known_issues.md
@@ -448,6 +528,8 @@ PROJECT_STATUS.md
 GameConfig 目前仍是 JS 静态配置文件，尚未拆分到 CSV / JSON。
 这是当前阶段有意保留的中间形态。
 未来核心功能基本迁移完成后，再进行 CSV / JSON 拆分。
+
+GameConfig 字段虽然使用英文 key，但必须配套中文注释，便于策划理解和维护。
 ```
 
 ---
@@ -459,21 +541,24 @@ GameConfig 目前仍是 JS 静态配置文件，尚未拆分到 CSV / JSON。
 ```text
 1. 新增 WEB_DEMO/src/game/config/GameConfig.js。
 2. GameConfig 至少包含 version、player、worker、jobs、stone、dayNight、map、text 这些配置段。
-3. GameState 使用 GameConfig.version 和 GameConfig.text.startMessage。
-4. PlayerSystem 使用 GameConfig.player.moveSpeed 或 GameState 初始化时从 GameConfig 读取速度。
-5. ResourceSystem 使用 GameConfig.player.pickupRadius、GameConfig.stone.placedTtl 和相关文案。
-6. WorkerSystem 使用 GameConfig.worker.moveSpeed、returnSpeed、jobs 配置、任务文案、奖励配置。
-7. InteractionSystem 从 GameConfig.jobs 构建可互动目标，而不是在本文件中硬编码 TARGETS。
-8. DayNightSystem 使用 GameConfig.dayNight.dayLength 和 phases。
-9. MapGenerator 使用 GameConfig.map 中的宽高、起点范围、段落范围、辉石数量范围、森林簇参数等。
-10. HudRenderer 使用 GameConfig.text 中的目标和操作说明，或至少从 state / config 获取对应文案。
-11. v0.2.1 的核心玩法不被破坏。
-12. 不引入 CSV / JSON 读取。
-13. 不新增黑影、围墙、弓箭手、矿山、流民、奇遇等新玩法。
-14. WEB_DEMO/index.html 未被修改。
-15. WEB_DEMO/src/main.js 仍只负责启动 GameApp。
-16. GPT_DEMO 未被修改。
-17. changelog、acceptance_tests、known_issues 已更新。
+3. GameConfig 每个一级配置段必须有中文注释。
+4. GameConfig 关键字段必须有中文注释，说明字段用途、单位、影响范围。
+5. 时间、速度、范围、比例、消耗、tile、文案字段必须重点注释。
+6. GameState 使用 GameConfig.version 和 GameConfig.text.startMessage。
+7. PlayerSystem 使用 GameConfig.player.moveSpeed 或 GameState 初始化时从 GameConfig 读取速度。
+8. ResourceSystem 使用 GameConfig.player.pickupRadius、GameConfig.stone.placedTtl 和相关文案。
+9. WorkerSystem 使用 GameConfig.worker.moveSpeed、returnSpeed、jobs 配置、任务文案、奖励配置。
+10. InteractionSystem 从 GameConfig.jobs 构建可互动目标，而不是在本文件中硬编码 TARGETS。
+11. DayNightSystem 使用 GameConfig.dayNight.dayLength 和 phases。
+12. MapGenerator 使用 GameConfig.map 中的宽高、起点范围、段落范围、辉石数量范围、森林簇参数等。
+13. HudRenderer 使用 GameConfig.text 中的目标和操作说明，或至少从 state / config 获取对应文案。
+14. v0.2.1 的核心玩法不被破坏。
+15. 不引入 CSV / JSON 读取。
+16. 不新增黑影、围墙、弓箭手、矿山、流民、奇遇等新玩法。
+17. WEB_DEMO/index.html 未被修改。
+18. WEB_DEMO/src/main.js 仍只负责启动 GameApp。
+19. GPT_DEMO 未被修改。
+20. changelog、acceptance_tests、known_issues 已更新。
 ```
 
 ---
@@ -486,10 +571,11 @@ GameConfig 目前仍是 JS 静态配置文件，尚未拆分到 CSV / JSON。
 1. 修改了哪些文件。
 2. 新增了哪些配置段。
 3. 哪些硬编码已经迁移到 GameConfig。
-4. 如何运行。
-5. 如何验证 GameConfig 生效。
-6. 哪些内容留到后续 CSV / JSON 拆分。
-7. 是否存在已知问题。
+4. GameConfig 中主要字段如何注释，是否便于策划阅读。
+5. 如何运行。
+6. 如何验证 GameConfig 生效。
+7. 哪些内容留到后续 CSV / JSON 拆分。
+8. 是否存在已知问题。
 ```
 
 ---
