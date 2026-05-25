@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>《看海去》GPT_DEMO gpt.11.2</title>
+<title>《看海去》GPT_DEMO gpt.11.3</title>
 <style>
 html, body {
   margin: 0; height: 100%; overflow: hidden;
@@ -57,17 +57,14 @@ input { width: 100%; }
 <div id="top" class="box"></div>
 <button id="infoBtn">信息</button>
 <div id="hud" class="box hide"></div>
-<button id="verBtn">gpt.11.2 更新</button>
+<button id="verBtn">gpt.11.3 更新</button>
 <div id="ver" class="box">
-  <h1>gpt.11.2 体验修复版</h1>
+  <h1>gpt.11.3 目标优先级修正版</h1>
   <ul>
-    <li>每个营地都会生成工棚和弓箭营。</li>
-    <li>颠倒森林区域只在中心格显示一次名称。</li>
-    <li>无可互动目标时，Space 会丢下 1 枚辉石。</li>
-    <li>修复进出颠倒森林时持续按键导致的卡顿。</li>
-    <li>工人遇黑影撤退后，黑影远离自动恢复原任务。</li>
-    <li>黑影每帧选择最近敌对目标（不再锁定单一目标）。</li>
-    <li>F2 开关文字标签 / F3 开关小地图（性能诊断）。</li>
+    <li>黑影优先拾取附近辉石。</li>
+    <li>没有辉石时，按 工人 > 弓箭手 > 返程流民 > 主角 选择目标。</li>
+    <li>玩家可通过投掷辉石吸引黑影，保护角色。</li>
+    <li>保留 gpt.11.2 全部功能。</li>
   </ul>
 </div>
 <button id="conBtn">Console</button>
@@ -88,7 +85,7 @@ input { width: 100%; }
 </div>
 <div id="help" class="box">
   <b>操作</b>：WASD / 方向键移动；<b>Space 互动</b>；R 重开。<br>
-  <b>gpt.11.2</b>：每个营地有转职建筑；Space 无互动时放置辉石；颠倒森林进出不卡顿。<br>
+  <b>gpt.11.3</b>：黑影优先拾取辉石；无辉石时按 工人>弓箭手>流民>主角 追击。<br>
   <b>F2</b> 开关文字标签 | <b>F3</b> 开关小地图（性能诊断）。
 </div>
 <div id="toast" class="box toast"></div>
@@ -335,7 +332,7 @@ function resetGame() {
   nextId   = 3;
   foxEvent = null;
   reveal();
-  msg('gpt.11.2：体验修复版已启动。');
+  msg('gpt.11.3：目标优先级修正版已启动。');
 }
 
 function mkUnit(type, x, y) {
@@ -756,8 +753,8 @@ function updateUnits(dt) {
 
 // 黑影威胁检测（撤退与恢复）
 function checkThreat(w) {
-  // 安全区内或正在返回营地的不检查
-  if (safe(w.x, w.y) || w.state === 'return') return;
+  // 安全区内跳过；普通返回工人跳过；但 flee=true 的撤退工人需要进入下方恢复逻辑
+  if (safe(w.x, w.y) || (w.state === 'return' && !w.flee)) return;
 
   let nearMonster = monsters.find(m =>
     Math.abs(m.x - w.x) <= 3 && Math.abs(m.y - w.y) <= 3
@@ -936,47 +933,69 @@ function spawnMonsters() {
       if (cell(x, y).t === T.FOG) fs.push({ x, y });
   if (!fs.length) return;
 
-  // 确认存在可攻击目标再生成
+  // 确认存在可攻击目标或地上有辉石再生成
   let hasTarget = false;
   if (!safe(pl.x, pl.y) && pl.inv <= 0) hasTarget = true;
   if (workers.some(w => !w.lost && !safe(w.x, w.y))) hasTarget = true;
   if (refs.some(r => !r.lost && !safe(r.x, r.y))) hasTarget = true;
   if (archers.some(a => !safe(a.x, a.y))) hasTarget = true;
-  if (!hasTarget) return;
+
+  // 检查地图上是否有散落辉石
+  let hasStone = false;
+  if (!hasTarget) {
+    for (let y = 0; y < H && !hasStone; y++)
+      for (let x = 0; x < W && !hasStone; x++)
+        if (cell(x, y).t === T.S) hasStone = true;
+  }
+
+  if (!hasTarget && !hasStone) return;
 
   let f = fs[rnd(fs.length)];
   monsters.push({ x: f.x, y: f.y });  // 目标每帧由 findNearestTarget 动态计算
 }
 
-// 每帧寻找最近敌对目标
+// 每帧寻找目标：辉石优先，其次按 工人 > 弓箭手 > 返程流民 > 主角
 function findNearestTarget(m) {
-  let candidates = [];
-
-  // 主角（不在安全区且不无敌）
-  if (!safe(pl.x, pl.y) && pl.inv <= 0) {
-    candidates.push({ kind: 'player', obj: pl });
+  // 第一优先级：拾取附近 8×8 范围内的辉石
+  let stones = [];
+  for (let y = Math.floor(m.y - 4); y <= Math.ceil(m.y + 4); y++) {
+    for (let x = Math.floor(m.x - 4); x <= Math.ceil(m.x + 4); x++) {
+      let c = cell(x, y);
+      if (c && c.t === T.S) stones.push({ x, y });
+    }
+  }
+  if (stones.length) {
+    stones.sort((a, b) => dist(m, a) - dist(m, b));
+    return { kind: 'stone', obj: stones[0] };
   }
 
-  // 工人（未失踪且不在安全区）
-  workers
-    .filter(w => !w.lost && !safe(w.x, w.y))
-    .forEach(w => candidates.push({ kind: 'worker', obj: w }));
+  // 第二优先级：工人（未失踪且不在安全区）
+  let workerTargets = workers.filter(w => !w.lost && !safe(w.x, w.y));
+  if (workerTargets.length) {
+    workerTargets.sort((a, b) => dist(m, a) - dist(m, b));
+    return { kind: 'worker', obj: workerTargets[0] };
+  }
 
-  // 返程流民（未失踪且不在安全区）
-  refs
-    .filter(r => !r.lost && !safe(r.x, r.y))
-    .forEach(r => candidates.push({ kind: 'refugee', obj: r }));
+  // 第三优先级：弓箭手（不在安全区）
+  let archerTargets = archers.filter(a => !safe(a.x, a.y));
+  if (archerTargets.length) {
+    archerTargets.sort((a, b) => dist(m, a) - dist(m, b));
+    return { kind: 'archer', obj: archerTargets[0] };
+  }
 
-  // 弓箭手（不在安全区）
-  archers
-    .filter(a => !safe(a.x, a.y))
-    .forEach(a => candidates.push({ kind: 'archer', obj: a }));
+  // 第四优先级：返程流民（未失踪且不在安全区）
+  let refugeeTargets = refs.filter(r => !r.lost && !safe(r.x, r.y));
+  if (refugeeTargets.length) {
+    refugeeTargets.sort((a, b) => dist(m, a) - dist(m, b));
+    return { kind: 'refugee', obj: refugeeTargets[0] };
+  }
 
-  if (!candidates.length) return null;
+  // 最后才选择主角
+  if (!safe(pl.x, pl.y) && pl.inv <= 0) {
+    return { kind: 'player', obj: pl };
+  }
 
-  // 按距离排序，选最近的
-  candidates.sort((a, b) => dist(m, a.obj) - dist(m, b.obj));
-  return candidates[0];
+  return null;
 }
 
 function updateMonsters(dt) {
@@ -995,7 +1014,13 @@ function updateMonsters(dt) {
 
     // 命中判定
     if (d < .35) {
-      if (ti.kind === 'player') {
+      if (ti.kind === 'stone') {
+        // 黑影拾走辉石
+        let sx = Math.round(t.x), sy = Math.round(t.y);
+        let sc = cell(sx, sy);
+        if (sc && sc.t === T.S) blank(sx, sy);
+        msg('黑林影拾走了一枚辉石。');
+      } else if (ti.kind === 'player') {
         hitPlayer();
       } else if (ti.kind === 'worker') {
         hitWorker(t.id);
@@ -1324,12 +1349,12 @@ function drawHud() {
   topHud.innerHTML = `第 ${day} 天 · ${phText()}${pl.ctrlInv ? ' · 颠倒森林' : ''}`;
 
   hud.innerHTML =
-    `<h1>《看海去》GPT_DEMO gpt.11.2</h1>
+    `<h1>《看海去》GPT_DEMO gpt.11.3</h1>
     辉石：<b>${stone}</b>　玩家：<b>${safe(pl.x, pl.y) ? '安全圈内' : night() ? '危险' : '安全'}</b><br>
     工人：<b>${idle}/${alive}</b> 空闲　弓箭手：<b>${archers.length}</b>　未转职流民：<b>${pop.length}</b><br>
     返程流民：<b>${refs.length}</b>　怪物：<b>${monsters.length}</b>　狐狸奇遇：<b>${foxEvent?.active ? '进行中' : '未触发/已结束'}</b><br>
     当前互动：<b>${hover ? hover.label : '面前/附近无可互动目标；Space 可放置辉石'}</b><br>
-    <span class="small">gpt.11.2：每个营地生成工棚/弓箭营；颠倒森林只显示一次名称；Space 无互动时放置辉石；进出颠倒森林不卡顿。<br>F2 开关文字标签 | F3 开关小地图（性能诊断）</span>`;
+    <span class="small">gpt.11.3：黑影优先拾取辉石；无辉石时按 工人>弓箭手>返程流民>主角 追击。玩家可通过投掷辉石吸引黑影。<br>F2 开关文字标签 | F3 开关小地图（性能诊断）</span>`;
 }
 
 // ============================================================
