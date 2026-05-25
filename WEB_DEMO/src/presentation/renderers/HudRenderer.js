@@ -12,12 +12,13 @@ export class HudRenderer {
     const lines = [
       `${state.version}`,
       `辉石：${state.player.stones}    工人：idle ${summary[states.idle]} / moving ${summary[states.moving]} / working ${summary[states.working]} / returning ${summary[states.returning]}`,
+      `黑影：场上 ${state.monsters.length} / 今夜 ${state.monsterSpawnedTonight}/${GameConfig.monster.perNight}`,
       `第 ${state.day} 天 · ${state.phaseLabel}`,
       GameConfig.text.goalText,
       GameConfig.text.controlsText
     ];
 
-    this.panel(16, 16, Math.min(760, this.renderer.width - 32), 132);
+    this.panel(16, 16, Math.min(760, this.renderer.width - 32), 154);
     ctx.font = '14px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';

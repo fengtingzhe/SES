@@ -10,7 +10,7 @@ import { TILE_TYPES } from '../world/TileMap.js';
  */
 export const GameConfig = {
   // 当前 Web Demo 展示版本号。会显示在 HUD 上；改动时应同步 changelog。
-  version: 'WEB_DEMO v0.3',
+  version: 'WEB_DEMO v0.4',
 
   /**
    * 玩家相关配置：控制主角移动、拾取范围和抵达目标判定。
@@ -131,7 +131,7 @@ export const GameConfig = {
     placedValue: 1,
     // 任务奖励辉石的默认单颗价值，单位：辉石数量。
     rewardValue: 1,
-    // 放置辉石在地面保留的时间，单位：秒；当前版本只用于显示，不实现诱敌。
+    // 放置辉石在地面保留的时间，单位：秒；数值越大，夜晚可诱敌窗口越长，但会降低黑影压力。
     placedTtl: 10
   },
 
@@ -148,9 +148,43 @@ export const GameConfig = {
       { id: 'day', label: '白天', end: 0.58, overlay: 0 },
       // 黄昏阶段，轻微暗化，用于提示夜晚将至。
       { id: 'dusk', label: '黄昏', end: 0.78, overlay: 0.12 },
-      // 夜晚阶段，明显暗化；当前版本不生成黑影。
+      // 夜晚阶段，明显暗化；黑影只会在该阶段从黑雾口生成。
       { id: 'night', label: '夜晚', end: 1, overlay: 0.34 }
     ]
+  },
+
+  /**
+   * 黑影配置：控制夜晚生成、移动、局部感知和接触判定。
+   * 这些参数直接影响夜晚压力与辉石诱敌价值，调大感知或速度会明显增加工人损失风险。
+   */
+  monster: {
+    // 每晚最多生成黑影数量，单位：只。数值越大夜晚压力越强，过高会让早期资源无法承受。
+    perNight: 2,
+    // 黑影移动速度，单位：格 / 秒。过高会让辉石诱敌和工人撤离几乎没有反应时间。
+    moveSpeed: 1.55,
+    // 黑影局部战术感知半径，单位：格。只在该范围内寻找辉石、外出工人和玩家；过大将削弱“局部压力”。
+    tacticalRange: 4,
+    // 黑影吞噬已放置辉石的判定半径，单位：格。过大时会出现隔空吞噬，过小会显得贴近后仍不触发。
+    consumeStoneRange: 0.55,
+    // 黑影抓住外出工人的判定半径，单位：格。过大时工人损失会过于突然。
+    catchWorkerRange: 0.55,
+    // 黑影碰到玩家的提示判定半径，单位：格。本轮只做提示，不做生命值或失败结算。
+    touchPlayerRange: 0.6,
+    // 黑影抵达默认营地目标后的消散半径，单位：格。当前不实现营地伤害，抵达后仅清除实体。
+    reachCampRange: 0.7,
+    // 夜晚分批生成间隔，单位：秒。过短会让同一晚压力集中爆发，过长可能导致天亮前无法生成完。
+    spawnInterval: 4,
+    // 玩家被黑影触碰提示的冷却时间，单位：秒。防止连续接触时消息刷屏。
+    touchPlayerMessageCooldown: 2.5,
+    // 天亮时是否清除仍在场黑影。true 表示昼夜边界明确；false 会让黑影跨天残留，风险更高。
+    clearAtDay: true,
+    // 黑影状态字符串，仅用于渲染和调试观察；改名会影响 HUD / 调试脚本读取。
+    states: {
+      // 默认朝最近已点亮营地或起点部落行进。
+      marching: 'marching',
+      // 4 格内发现更高优先级目标后转向追逐。
+      chasing: 'chasing'
+    }
   },
 
   /**
@@ -255,7 +289,22 @@ export const GameConfig = {
     // 森林簇长度随机最大值，单位：格。
     forestClusterLengthMax: 4,
     // 森林簇相对主路径 y 坐标的候选偏移，单位：格。
-    forestClusterYOffsetCandidates: [-4, -3, 3, 4]
+    forestClusterYOffsetCandidates: [-4, -3, 3, 4],
+
+    // 黑雾口数量随机最小值，单位：个。数量越多，夜晚黑影来源越分散。
+    fogGateCountMin: 2,
+    // 黑雾口数量随机最大值，单位：个。过高会增加视觉噪音，也会放大未来生成压力。
+    fogGateCountMax: 3,
+    // 黑雾口生成主路径 x 索引最小值，单位：路径索引。过早会压迫开局安全区。
+    fogGateIndexMin: 18,
+    // 黑雾口生成主路径 x 索引最大值，单位：路径索引。过晚会让夜晚压力集中在终点附近。
+    fogGateIndexMax: 39,
+    // 黑雾口与树障、河流、营地、终点的避让距离，单位：路径索引。
+    fogGateReservedGap: 3,
+    // 黑雾口之间的优先间距，单位：路径索引。过小会让多个生成点挤在一起。
+    fogGateSpacing: 8,
+    // 黑雾口相对主路径 y 坐标的候选偏移，单位：格。绝对值越大越靠近森林边缘。
+    fogGateYOffsetCandidates: [-5, -4, -3, 3, 4, 5]
   },
 
   /**
@@ -282,6 +331,16 @@ export const GameConfig = {
     noPlaceForStone: '附近没有可放置辉石的位置。',
     // 成功放置辉石时显示。
     placedStone: '放置了一枚辉石。',
+    // 夜晚开始并生成黑影压力时显示。
+    nightStarts: '夜色压下来，黑雾开始涌动。',
+    // 黑影吞噬玩家放置的辉石时显示。
+    monsterConsumedStone: '黑影被辉石引开，吞下光芒后散去了。',
+    // 黑影抓住外出工人时显示。
+    workerCaptured: '一名外出的工人被黑影抓走了。',
+    // 黑影触碰玩家时显示；本轮只提示，不进入失败流程。
+    playerTouchedByMonster: '黑影擦过你身边，火光之外很危险。',
+    // 天亮清除残留黑影时显示。
+    monstersClearedAtDay: '天色转亮，残留的黑影退回雾中。',
     // 拾取辉石时显示；count 单位：辉石数量。
     pickupStone: count => `拾取辉石 +${count}`,
     // 辉石不足以派遣工人时显示；count 单位：辉石数量。

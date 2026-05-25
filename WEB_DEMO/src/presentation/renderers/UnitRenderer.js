@@ -4,9 +4,30 @@ export class UnitRenderer {
   }
 
   draw(state) {
+    this.drawFogGates(state);
     this.drawStones(state);
     for (const worker of state.workers) this.drawWorker(state, worker);
+    for (const monster of state.monsters) this.drawMonster(state, monster);
     this.drawPlayer(state);
+  }
+
+  drawFogGates(state) {
+    const { ctx } = this.renderer;
+    for (const gate of state.fogGates) {
+      const point = this.renderer.worldToScreen(gate.x, gate.y, state.camera);
+      ctx.save();
+      ctx.fillStyle = 'rgba(22, 13, 34, 0.82)';
+      ctx.beginPath();
+      ctx.arc(point.x, point.y, 13, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(172, 114, 232, 0.68)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(point.x, point.y, 16, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.lineWidth = 1;
+      ctx.restore();
+    }
   }
 
   drawStones(state) {
@@ -63,6 +84,25 @@ export class UnitRenderer {
     ctx.lineTo(point.x - dir.y * 5, point.y + dir.x * 5);
     ctx.closePath();
     ctx.fill();
+  }
+
+  drawMonster(state, monster) {
+    const { ctx } = this.renderer;
+    const point = this.renderer.worldToScreen(monster.x, monster.y, state.camera);
+    ctx.save();
+    ctx.fillStyle = monster.targetType === 'stone' ? 'rgba(25, 22, 31, 0.72)' : 'rgba(8, 10, 13, 0.86)';
+    ctx.beginPath();
+    ctx.ellipse(point.x, point.y, 11, 15, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = monster.state === 'chasing' ? '#d9b3ff' : '#5c6170';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = '#f0e8ff';
+    ctx.beginPath();
+    ctx.arc(point.x - 4, point.y - 4, 2, 0, Math.PI * 2);
+    ctx.arc(point.x + 4, point.y - 4, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
   }
 
   drawProgress(x, y, value) {

@@ -11,6 +11,7 @@ export class GameState {
     this.map = world.map;
     this.start = world.start;
     this.goal = world.goal;
+    this.fogGates = world.fogGates || [];
     this.camps = world.camps;
     this.workers = world.workers;
     this.looseStones = world.looseStones;
@@ -33,6 +34,12 @@ export class GameState {
     };
     this.goalReached = false;
     this.nextStoneId = 100;
+    this.monsters = [];
+    this.nextMonsterId = 1;
+    this.monsterSpawnedTonight = 0;
+    this.monsterSpawnTimer = 0;
+    this.monsterWasNight = false;
+    this.monsterTouchMessageTimer = 0;
   }
 
   addMessage(text, duration = 3) {

@@ -52,15 +52,17 @@ export class MapGenerator {
     carve(map, goal.x, goal.y, config.path.goalCarveRadius);
     map.setType(goal.x, goal.y, TILE_TYPES.GOAL);
 
-    addForestClusters(map, path, [treeIndex, riverIndex, campIndex, goalIndex]);
+    const reservedIndexes = [treeIndex, riverIndex, campIndex, goalIndex];
+    addForestClusters(map, path, reservedIndexes);
 
     return {
       map,
       start,
       goal,
+      fogGates: createFogGates(map, path, reservedIndexes),
       camps: [{ x: start.x, y: start.y, type: 'village', active: true }],
       workers: createWorkers(start),
-      looseStones: createStones(map, path, [treeIndex, riverIndex, campIndex, goalIndex])
+      looseStones: createStones(map, path, reservedIndexes)
     };
   }
 }
@@ -154,6 +156,55 @@ function createStones(map, path, reservedIndexes) {
   });
 
   return stonePoints;
+}
+
+function createFogGates(map, path, reservedIndexes) {
+  const config = GameConfig.map;
+  const count = randomInt(config.fogGateCountMin, config.fogGateCountMax);
+  const indexes = selectPathIndexes({
+    min: config.fogGateIndexMin,
+    max: Math.min(config.fogGateIndexMax, path.length - config.path.endPadding),
+    count,
+    reservedIndexes,
+    reservedGap: config.fogGateReservedGap,
+    spacing: config.fogGateSpacing
+  });
+
+  return indexes
+    .map((x, index) => {
+      const center = path[x];
+      if (!center) return null;
+      const offsetY = randomChoice(config.fogGateYOffsetCandidates);
+      const point = findFogGatePoint(map, path, center.x, center.y, offsetY);
+      return {
+        id: `fog-gate-${index + 1}`,
+        x: point.x,
+        y: point.y
+      };
+    })
+    .filter(Boolean);
+}
+
+function findFogGatePoint(map, path, x, y, offsetY) {
+  const direction = Math.sign(offsetY) || 1;
+  const candidates = [
+    { x, y: y + offsetY },
+    { x: x - 1, y: y + offsetY },
+    { x: x + 1, y: y + offsetY },
+    { x, y: y + offsetY + direction },
+    { x, y: y + offsetY - direction }
+  ];
+
+  const edgePoint = candidates.find(point => (
+    map.inBounds(point.x, point.y) && !isNearPathCorridor(path, point.x, point.y)
+  ));
+
+  if (edgePoint) return edgePoint;
+
+  return {
+    x,
+    y: clamp(y + offsetY, 1, map.height - 2)
+  };
 }
 
 function findWalkableNear(map, x, y) {

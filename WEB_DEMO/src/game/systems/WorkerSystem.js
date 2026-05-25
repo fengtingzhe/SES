@@ -167,4 +167,33 @@ export class WorkerSystem {
       ? GameConfig.worker.states.returning
       : GameConfig.worker.states.idle;
   }
+
+  captureWorker(state, worker) {
+    this.releaseWorkerReservation(state, worker);
+    worker.state = 'captured';
+    worker.job = null;
+    worker.path = [];
+    worker.pathIndex = 0;
+    worker.progress = 0;
+    state.workers = state.workers.filter(candidate => candidate.id !== worker.id);
+  }
+
+  releaseWorkerReservation(state, worker) {
+    if (worker.job) {
+      const targetTile = state.map.get(worker.job.x, worker.job.y);
+      if (targetTile) targetTile.reserved = false;
+    }
+
+    for (const tile of state.map.tiles) {
+      if (tile.reservedBy === worker.id) {
+        tile.reserved = false;
+        tile.reservedBy = null;
+      }
+      if (tile.worker === worker.id) tile.worker = null;
+      if (tile.workerId === worker.id) tile.workerId = null;
+      if (tile.occupiedBy === worker.id) tile.occupiedBy = null;
+      if (tile.mine?.worker === worker.id) tile.mine.worker = null;
+      if (tile.mine?.workerId === worker.id) tile.mine.workerId = null;
+    }
+  }
 }
