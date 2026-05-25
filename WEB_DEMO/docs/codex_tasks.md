@@ -4,12 +4,12 @@
 
 ---
 
-# 当前任务：WEB_DEMO v0.5 围墙 / 弓箭手 / 防御系统
+# 当前任务：WEB_DEMO v0.6 矿山 / 流民 / 人口补给系统
 
 ## 任务名称
 
 ```text
-WEB_DEMO v0.5 围墙 / 弓箭手 / 防御系统
+WEB_DEMO v0.6 矿山 / 流民 / 人口补给系统
 ```
 
 ---
@@ -17,12 +17,12 @@ WEB_DEMO v0.5 围墙 / 弓箭手 / 防御系统
 ## 任务背景
 
 ```text
-1. WEB_DEMO v0.2.1 已经完成最小核心循环：探索、辉石、工人派遣、砍树、修桥、点亮营地、日夜循环、阶段目标、轻随机地图。
-2. WEB_DEMO v0.3 已经建立 GameConfig.js，所有静态配置、数值、文案、范围、时长、数量都应优先写入 GameConfig。
-3. WEB_DEMO v0.4 已经完成最小夜晚黑影压力：黑雾口、黑影生成、最近营地行军、4 格局部感知、辉石诱敌、工人被抓与 reserved 释放。
-4. v0.5 目标是在黑影压力基础上加入最小防御闭环。
-5. 本轮重点是墙基、围墙、围墙 HP、黑影攻击围墙、弓箭手、弓箭手自动射击黑影。
-6. 黑影当前可以继续使用 v0.4 的直线移动，本轮不强制实现复杂寻路。
+1. WEB_DEMO v0.2.1 已完成最小核心循环：探索、辉石、工人派遣、砍树、修桥、点亮营地、日夜循环、阶段目标、轻随机地图。
+2. WEB_DEMO v0.3 已建立 GameConfig.js，所有静态配置、数值、文案、范围、时长、数量都应优先写入 GameConfig。
+3. WEB_DEMO v0.4 已完成夜晚黑影压力：黑雾口、黑影生成、最近营地行军、4 格局部感知、辉石诱敌、工人被抓与 reserved 释放。
+4. WEB_DEMO v0.5 已完成最小防御闭环：墙基、围墙、围墙 HP、黑影攻击围墙、弓箭手招募与自动射击。
+5. v0.6 目标是加入最小资源点与人口补给系统，让玩家不再只依赖初始工人和地图散落辉石。
+6. 本轮重点是矿山、矿工采矿、矿山占用释放、流民火堆、招募流民、流民返回营地、流民转化为空闲工人。
 ```
 
 ---
@@ -32,46 +32,43 @@ WEB_DEMO v0.5 围墙 / 弓箭手 / 防御系统
 开始本任务前，必须确认：
 
 ```text
-1. WEB_DEMO/src/game/config/GameConfig.js 已存在。
-2. GameConfig 已包含 monster 配置段，并有中文注释。
-3. WEB_DEMO/src/game/systems/MonsterSystem.js 已存在。
-4. 夜晚可以生成黑影。
-5. 黑影可以被玩家放置的辉石吸引。
-6. 黑影可以抓走外出工人，并释放任务目标 reserved 状态。
-7. WEB_DEMO/index.html 仍是薄入口，只加载 /src/main.js。
-8. WEB_DEMO/src/main.js 仍只负责启动 GameApp。
+1. GameConfig.js 已存在，并包含 player / worker / jobs / stone / dayNight / monster / wall / archer / map / text 等配置段。
+2. v0.5 的围墙与弓箭手系统已经能运行。
+3. 黑影可以抓走外出工人，并且 WorkerSystem 已有 releaseWorkerReservation / captureWorker 一类清理逻辑。
+4. WEB_DEMO/index.html 仍是薄入口，只加载 /src/main.js。
+5. WEB_DEMO/src/main.js 仍只负责启动 GameApp。
 ```
 
-如果 v0.4 未完成，不要执行本任务。
+如果 v0.5 未完成，不要执行本任务。
 
 ---
 
 ## 任务目标
 
-实现最小防御闭环：
+实现最小资源点与人口补给闭环：
 
 ```text
-白天收集辉石
+玩家探索地图
 ↓
-玩家在营地附近建造墙基 / 围墙
+发现矿山和流民火堆
 ↓
-夜晚黑影靠近营地
+玩家消耗辉石派工人占用矿山采矿
 ↓
-黑影优先攻击局部范围内的围墙
+矿山周期性产出辉石
 ↓
-围墙承受伤害并可能被摧毁
+玩家消耗辉石招募流民
 ↓
-玩家可以招募弓箭手
+流民返回最近已激活营地
 ↓
-弓箭手自动射击范围内黑影
+流民抵达营地后转化为空闲工人
 ↓
-夜晚压力从“只能用辉石诱敌”升级为“辉石诱敌 + 防御建设”
+玩家获得更长线的资源与人口补给
 ```
 
 这一版的目标是验证：
 
 ```text
-防御建设 + 自动单位防守 + 黑影夜袭压力
+持续资源产出 + 人口补充 + 远征补给线
 ```
 
 是否成立。
@@ -80,209 +77,212 @@ WEB_DEMO v0.5 围墙 / 弓箭手 / 防御系统
 
 # 本轮只做
 
-## 一、墙基与围墙
+## 一、矿山
 
-新增最小围墙系统。
-
-要求：
-
-```text
-1. 地图上应存在可建造墙的位置。
-2. 墙位优先出现在起点部落 / 已激活营地附近。
-3. 玩家靠近墙基或可建墙位置，按 Space 可以消耗辉石派工人建墙。
-4. 工人到达后执行建墙工作。
-5. 建造完成后生成围墙。
-6. 围墙有 HP。
-7. 围墙可以被黑影攻击。
-8. 围墙 HP <= 0 后被摧毁，恢复为可建墙状态或普通地面，本轮任选一种简单实现。
-```
-
-建议表现：
-
-```text
-墙基：浅灰 / 木桩图形
-围墙：深色木墙 / 石墙块
-受损围墙：颜色变暗或显示 HP 文本
-```
-
----
-
-## 二、围墙建造规则
-
-本轮可以采用简单规则，不需要复杂自由建造。
-
-推荐方案：
-
-```text
-1. 每个已激活营地左右两侧或关键通路附近生成固定墙基。
-2. 玩家只能在墙基上建墙。
-3. 不做任意地点自由放置围墙。
-4. 不做复杂建筑规划 UI。
-```
-
-原因：
-
-```text
-v0.5 目标是验证防御闭环，不是验证完整建造编辑器。
-```
-
----
-
-## 三、黑影攻击围墙
-
-扩展 MonsterSystem，使黑影在局部感知范围内可以识别围墙。
-
-目标优先级建议调整为：
-
-```text
-1. 地面放置的辉石
-2. 外出工人
-3. 可攻击围墙
-4. 玩家
-5. 当前行军目标营地
-```
-
-说明：
-
-```text
-1. 辉石仍然是最高优先级诱敌目标。
-2. 工人仍然有夜晚风险。
-3. 围墙用于保护营地与路线，是黑影接近营地时的主要攻击目标。
-4. 玩家被追上本轮仍只显示提示，不做失败结算。
-5. 营地本轮仍可只作为行军目标，不做营地 HP。
-```
-
-围墙攻击规则：
-
-```text
-1. 黑影接近围墙后进入攻击状态或停留攻击。
-2. 按 GameConfig.monster.attackInterval 或 wallDamageInterval 对围墙造成伤害。
-3. 每次伤害值从 GameConfig.monster.wallDamage 读取。
-4. 围墙 HP 归零后被摧毁。
-5. 黑影摧毁围墙后继续选择目标。
-```
-
----
-
-## 四、弓箭手
-
-新增最小弓箭手单位。
+新增最小矿山系统。
 
 要求：
 
 ```text
-1. 玩家可以消耗辉石招募弓箭手。
-2. 弓箭手可以从起点部落或已激活营地生成。
-3. 弓箭手不需要玩家直接操作。
-4. 弓箭手自动寻找射程内黑影。
-5. 弓箭手按攻击间隔射击。
-6. 黑影被命中后扣 HP。
-7. 黑影 HP <= 0 后消失。
+1. 地图上生成若干矿山。
+2. 矿山应出现在主路径附近，不能挡住必经通路。
+3. 玩家靠近矿山按 Space，可以消耗辉石派遣空闲工人采矿。
+4. 同一矿山同一时间只能被一个工人占用。
+5. 工人到达矿山后进入 mining / working 状态，本轮可复用 working，也可新增 mining 状态。
+6. 矿山按周期产出辉石。
+7. 产出的辉石可以直接进入玩家资源，也可以掉落在矿山旁，本轮任选一种简单实现。
+8. 工人被黑影抓走、死亡、移除或任务中断时，矿山占用必须释放。
 ```
 
-本轮可以简化：
+重点：
 
 ```text
-1. 弓箭手可以站在营地附近，不需要复杂巡逻。
-2. 弓箭可以用简单线条或闪光表现。
-3. 不需要弹道物理。
-4. 不需要弓箭手被黑影攻击。
+必须避免“矿工被抓走后，矿山仍提示已有工人”的问题。
 ```
+
+这是本轮最高优先级风险点。
 
 ---
 
-## 五、弓箭手招募入口
+## 二、矿山占用规则
 
-本轮不做复杂职业系统。
+矿山必须有明确占用状态。
 
-推荐简单方案：
+建议字段：
 
 ```text
-1. 在起点部落 / 已激活营地附近添加“弓箭训练点”或“弓箭营占位点”。
-2. 玩家靠近后按 Space，消耗辉石招募弓箭手。
-3. 招募出的弓箭手留在营地附近防守。
-4. 后续版本再和流民 / 职业系统合并。
+mineId
+workerId
+occupied
+progress
 ```
 
-如果 Codex 认为本轮做弓箭训练点过多，也可以采用临时方案：
+可以存在于：
 
 ```text
-玩家靠近部落按指定互动目标招募弓箭手。
+state.mines
+```
+
+也可以存在于 tile 上，例如：
+
+```text
+tile.mine = { workerId, progress }
 ```
 
 但必须保证：
 
 ```text
-弓箭手招募成本、射程、攻击间隔、伤害、HP 等静态参数进入 GameConfig.archer。
+1. 工人被抓后能通过 worker.id 找到并释放矿山。
+2. 工人完成或取消占用后，矿山不再提示已有工人。
+3. 如果后续扩展矿山等级或产出速度，不需要重写整套逻辑。
+```
+
+---
+
+## 三、流民火堆
+
+新增最小流民火堆系统。
+
+要求：
+
+```text
+1. 地图上生成若干流民火堆。
+2. 流民火堆应出现在主路径附近或营地之间。
+3. 玩家靠近流民火堆按 Space，可以消耗辉石招募流民。
+4. 每个流民火堆可以有有限流民数量，例如 1～2 个。
+5. 招募后生成一个 refugee 实体。
+6. 流民会自动返回最近已激活营地或部落。
+7. 流民抵达营地后转化为空闲工人。
+8. 转化后从 state.refugees 中移除，并向 state.workers 增加新工人。
+```
+
+本轮不要求：
+
+```text
+1. 流民火堆刷新。
+2. 流民复杂 AI。
+3. 流民被黑影抓走。
+4. 流民职业选择。
+```
+
+如果实现流民被黑影抓走成本过高，可记录到 known_issues。
+
+---
+
+## 四、人口补给
+
+新增基本人口统计。
+
+要求：
+
+```text
+1. HUD 显示当前工人数、流民数或人口补给信息。
+2. 流民转化为空闲工人后，工人数量增加。
+3. 新工人应能被派遣去砍树、修桥、点营地、建墙或采矿。
+4. 新工人应拥有唯一 id，不能和已有工人冲突。
+```
+
+---
+
+## 五、与黑影系统的关系
+
+本轮必须处理：
+
+```text
+1. 黑影抓走正在采矿的工人时，矿山占用被释放。
+2. 黑影抓走普通任务工人时，v0.4 / v0.5 的 reserved 释放逻辑不被破坏。
+3. 黑影是否抓流民，本轮可选。
+```
+
+推荐：
+
+```text
+v0.6 暂不让黑影抓流民，只记录为 known_issues；优先保证矿山占用释放正确。
 ```
 
 ---
 
 # GameConfig 要求
 
-必须在 `GameConfig.js` 中新增或扩展以下配置段：
+必须在 `GameConfig.js` 中新增或扩展以下配置段。
 
-## wall
+## mine
 
 ```js
-// 围墙系统配置：控制建墙成本、建造时间、生命值和损坏反馈。
-wall: {
-  // 建造一段围墙需要消耗的辉石数量。
-  buildCost: 2,
+// 矿山系统配置：控制矿山生成、采矿成本、采矿周期和产出。
+mine: {
+  // 派遣工人占用矿山需要消耗的辉石数量。
+  assignCost: 1,
 
-  // 建造围墙所需工作时间，单位：秒。
-  buildDuration: 4,
+  // 工人完成一次采矿所需时间，单位：秒。数值越大，矿山产出越慢。
+  workDuration: 6,
 
-  // 围墙最大生命值。黑影攻击会扣除该值；数值越大，夜晚防御越稳。
-  maxHp: 3,
+  // 单次采矿产出的辉石数量。
+  yieldStone: 1,
 
-  // 围墙被摧毁后是否恢复为墙基。true 表示玩家后续可以重建。
-  restoreFoundationOnDestroy: true,
+  // 地图生成的矿山最小数量，单位：个。
+  countMin: 1,
+
+  // 地图生成的矿山最大数量，单位：个。
+  countMax: 2,
+
+  // 矿山生成主路径索引最小值，单位：路径索引。
+  indexMin: 14,
+
+  // 矿山生成主路径索引最大值，单位：路径索引。
+  indexMax: 36,
 }
 ```
 
-## archer
+## refugee
 
 ```js
-// 弓箭手系统配置：控制招募成本、射程、攻击频率和伤害。
-archer: {
-  // 招募一名弓箭手需要消耗的辉石数量。
-  recruitCost: 2,
+// 流民系统配置：控制流民火堆、招募成本、返程速度和转化规则。
+refugee: {
+  // 招募一个流民需要消耗的辉石数量。
+  recruitCost: 1,
 
-  // 弓箭手自动攻击范围，单位：格。过大会让防守过强，过小会难以命中黑影。
-  attackRange: 5,
+  // 流民返回营地的移动速度，单位：格 / 秒。
+  moveSpeed: 1.7,
 
-  // 弓箭手攻击间隔，单位：秒。数值越小，射击越频繁。
-  attackCooldown: 1.2,
+  // 流民抵达营地并转化为工人的判定距离，单位：格。
+  arriveRange: 0.6,
 
-  // 单次攻击造成的黑影伤害。
-  damage: 1,
+  // 每个流民火堆初始流民数量最小值，单位：个。
+  countPerCampMin: 1,
 
-  // 弓箭手生成点相对营地中心的偏移，单位：格。
-  spawnOffsets: [
-    { x: -1.2, y: -1.2 },
-    { x: -1.2, y: 1.2 },
-    { x: 1.2, y: -1.2 },
-    { x: 1.2, y: 1.2 },
+  // 每个流民火堆初始流民数量最大值，单位：个。
+  countPerCampMax: 2,
+
+  // 地图生成流民火堆最小数量，单位：个。
+  fireCountMin: 1,
+
+  // 地图生成流民火堆最大数量，单位：个。
+  fireCountMax: 2,
+
+  // 流民火堆生成主路径索引最小值，单位：路径索引。
+  fireIndexMin: 10,
+
+  // 流民火堆生成主路径索引最大值，单位：路径索引。
+  fireIndexMax: 34,
+}
+```
+
+## population
+
+```js
+// 人口系统配置：控制新工人 id、出生偏移和人口提示。
+population: {
+  // 流民转化为工人时，是否生成在抵达营地附近。
+  spawnAtCamp: true,
+
+  // 新工人相对营地中心的出生偏移候选，单位：格。
+  workerSpawnOffsets: [
+    { x: -0.7, y: -0.8 },
+    { x: -0.8, y: 0.8 },
+    { x: 0.7, y: 0.7 },
+    { x: 0.8, y: -0.7 }
   ],
-}
-```
-
-## monster 扩展
-
-```js
-monster: {
-  // 黑影最大生命值。被弓箭手攻击会扣除。
-  maxHp: 2,
-
-  // 黑影攻击围墙的间隔，单位：秒。
-  wallAttackInterval: 1.2,
-
-  // 黑影每次攻击围墙造成的伤害。
-  wallDamage: 1,
-
-  // 黑影攻击围墙的判定距离，单位：格。
-  attackWallRange: 0.7,
 }
 ```
 
@@ -292,12 +292,14 @@ monster: {
 
 ```js
 text: {
-  wallBuildStarted: '工人开始建造围墙。',
-  wallBuilt: '围墙建好了。',
-  wallDestroyed: '围墙被黑影摧毁了。',
-  archerRecruited: '一名弓箭手加入了防守。',
-  needMoreStoneForWall: count => `建墙需要 ${count} 个辉石。`,
-  needMoreStoneForArcher: count => `招募弓箭手需要 ${count} 个辉石。`,
+  mineAssigned: '工人开始采矿。',
+  mineOccupied: '这座矿山已有工人。',
+  mineProduced: count => `矿山产出辉石 +${count}`,
+  refugeeRecruited: '一名流民正在返回营地。',
+  refugeeJoined: '一名流民加入，成为新的工人。',
+  refugeeFireEmpty: '这里已经没有流民了。',
+  needMoreStoneForMine: count => `采矿需要 ${count} 个辉石。`,
+  needMoreStoneForRefugee: count => `招募流民需要 ${count} 个辉石。`,
 }
 ```
 
@@ -308,11 +310,17 @@ text: {
 可以新增：
 
 ```text
-WEB_DEMO/src/game/systems/DefenseSystem.js
-WEB_DEMO/src/game/systems/ArcherSystem.js
+WEB_DEMO/src/game/systems/MineSystem.js
+WEB_DEMO/src/game/systems/RefugeeSystem.js
 ```
 
-也可以合并为一个较小的系统，但不要把所有逻辑堆到 MonsterSystem 或 GameApp 中。
+也可以将人口转化逻辑放入：
+
+```text
+WEB_DEMO/src/game/systems/PopulationSystem.js
+```
+
+但不要把所有逻辑堆到 `GameApp.js`、`MapGenerator.js` 或 `InteractionSystem.js` 中。
 
 ---
 
@@ -325,11 +333,12 @@ WEB_DEMO/src/game/config/GameConfig.js
 WEB_DEMO/src/game/state/GameState.js
 WEB_DEMO/src/game/world/MapGenerator.js
 WEB_DEMO/src/game/world/TileMap.js
-WEB_DEMO/src/game/systems/MonsterSystem.js
+WEB_DEMO/src/game/systems/MineSystem.js
+WEB_DEMO/src/game/systems/RefugeeSystem.js
+WEB_DEMO/src/game/systems/PopulationSystem.js
 WEB_DEMO/src/game/systems/WorkerSystem.js
+WEB_DEMO/src/game/systems/MonsterSystem.js
 WEB_DEMO/src/game/systems/InteractionSystem.js
-WEB_DEMO/src/game/systems/DefenseSystem.js
-WEB_DEMO/src/game/systems/ArcherSystem.js
 WEB_DEMO/src/app/GameApp.js
 WEB_DEMO/src/presentation/renderers/TileRenderer.js
 WEB_DEMO/src/presentation/renderers/UnitRenderer.js
@@ -364,20 +373,20 @@ PROJECT_STATUS.md
 禁止本轮实现：
 
 ```text
-1. 不实现矿山。
-2. 不实现流民火堆。
-3. 不实现完整职业系统。
-4. 不实现狐狸成亲。
-5. 不实现颠倒森林。
-6. 不接入正式图片资源。
-7. 不接入音乐音效。
-8. 不做 CSV / JSON 读取。
-9. 不做存档系统。
-10. 不做移动端虚拟摇杆。
-11. 不改视觉视角。
-12. 不做复杂失败结算。
-13. 不做复杂弹道物理。
-14. 不强制重写黑影寻路；v0.5 可继续使用 v0.4 的直线移动。
+1. 不实现完整职业系统。
+2. 不实现矿山升级。
+3. 不实现流民火堆刷新。
+4. 不实现流民复杂 AI。
+5. 不实现狐狸成亲。
+6. 不实现颠倒森林。
+7. 不接入正式图片资源。
+8. 不接入音乐音效。
+9. 不做 CSV / JSON 读取。
+10. 不做存档系统。
+11. 不做移动端虚拟摇杆。
+12. 不改视觉视角。
+13. 不做复杂失败结算。
+14. 不强制重写黑影寻路；v0.6 可继续使用直线移动。
 ```
 
 ---
@@ -391,53 +400,58 @@ PROJECT_STATUS.md
 新增：
 
 ```markdown
-## v0.5.0
+## v0.6.0
 
-状态：围墙 / 弓箭手 / 防御系统
+状态：矿山 / 流民 / 人口补给系统
 
 内容：
-- 新增墙基与围墙。
-- 玩家可以消耗辉石派工人建造围墙。
-- 围墙拥有 HP，并可以被黑影攻击和摧毁。
-- 新增弓箭手单位或弓箭手防守点。
-- 玩家可以消耗辉石招募弓箭手。
-- 弓箭手自动攻击射程内黑影。
-- 黑影拥有 HP，可以被弓箭手击败。
-- 围墙与弓箭手相关静态配置集中在 GameConfig.wall / GameConfig.archer，并配有中文注释。
+- 新增矿山资源点。
+- 玩家可以消耗辉石派工人采矿。
+- 矿山同一时间只能被一个工人占用。
+- 矿山周期性产出辉石。
+- 工人被黑影抓走后，矿山占用会被释放。
+- 新增流民火堆。
+- 玩家可以消耗辉石招募流民。
+- 流民会返回最近已激活营地，并转化为空闲工人。
+- 新增人口补给信息展示。
+- 矿山、流民和人口相关静态配置集中在 GameConfig.mine / GameConfig.refugee / GameConfig.population，并配有中文注释。
 ```
 
 ## 2. WEB_DEMO/docs/acceptance_tests.md
 
-新增 v0.5 验收项：
+新增 v0.6 验收项：
 
 ```text
-测试名称：WEB_DEMO v0.5 围墙 / 弓箭手 / 防御系统
-前置条件：已安装 Node.js，v0.4 黑影系统已完成
+测试名称：WEB_DEMO v0.6 矿山 / 流民 / 人口补给系统
+前置条件：已安装 Node.js，v0.5 防御系统已完成
 操作步骤：
 1. 进入 WEB_DEMO 目录
 2. 执行 npm install
 3. 执行 npm run dev
 4. 打开浏览器
-5. 收集足够辉石
-6. 靠近墙基或可建墙位置，按 Space 派工人建墙
-7. 等待围墙建成
-8. 招募至少 1 名弓箭手
-9. 等待夜晚黑影生成
-10. 观察黑影接近围墙后的行为
-11. 观察弓箭手是否自动攻击黑影
-12. 如围墙被攻击，观察 HP 或受损表现
+5. 观察地图上是否存在矿山和流民火堆
+6. 收集足够辉石
+7. 靠近矿山，按 Space 派工人采矿
+8. 确认矿山进入占用状态，并周期性产出辉石
+9. 在矿工外出或采矿时等待夜晚黑影接近，观察矿工被抓后的矿山状态
+10. 矿工被抓后，再次靠近同一矿山尝试派遣新工人
+11. 靠近流民火堆，按 Space 招募流民
+12. 观察流民是否返回最近已激活营地
+13. 流民抵达营地后，确认工人数增加
 预期结果：
 1. 浏览器控制台无 JavaScript 报错
-2. GameConfig.js 存在 wall / archer 配置段，关键字段有中文注释
-3. 玩家可以建造围墙
-4. 围墙拥有 HP
-5. 黑影可以攻击围墙
-6. 围墙 HP 归零后被摧毁或恢复为墙基
-7. 玩家可以招募弓箭手
-8. 弓箭手可以自动攻击射程内黑影
-9. 黑影拥有 HP，可以被弓箭手击败
-10. v0.4 的黑影夜晚压力、辉石诱敌、工人被抓仍可运行
-11. 本轮不包含矿山、流民、奇遇或复杂职业系统
+2. GameConfig.js 存在 mine / refugee / population 配置段，关键字段有中文注释
+3. 地图中存在矿山和流民火堆
+4. 玩家可以派工人采矿
+5. 同一矿山同一时间只能被一个工人占用
+6. 矿山能产出辉石
+7. 矿工被抓后，矿山占用被释放，可再次派遣工人
+8. 玩家可以招募流民
+9. 流民会返回最近已激活营地或部落
+10. 流民抵达后转化为空闲工人，工人数增加
+11. 新工人可以继续执行砍树、修桥、点营地、建墙或采矿
+12. v0.5 的黑影、防御、弓箭手系统不被破坏
+13. 本轮不包含完整职业系统、矿山升级、流民火堆刷新或奇遇
 ```
 
 ## 3. WEB_DEMO/docs/known_issues.md
@@ -445,9 +459,8 @@ PROJECT_STATUS.md
 记录本轮未做内容：
 
 ```text
-v0.5 只实现最小防御闭环，不包含矿山、流民、完整职业系统、复杂建造规划、复杂弹道物理或正式美术表现。
-黑影仍可继续使用直线移动，复杂寻路后续再处理。
-弓箭手当前可以是固定防守单位，巡逻、编队、站位优化后续再处理。
+v0.6 只实现最小矿山 / 流民 / 人口补给闭环，不包含完整职业系统、矿山升级、流民火堆刷新、流民被黑影抓走、复杂人口管理或正式美术表现。
+矿山产出和流民补给仍是原型数值，后续需要配合整体经济节奏调参。
 ```
 
 ---
@@ -457,21 +470,21 @@ v0.5 只实现最小防御闭环，不包含矿山、流民、完整职业系统
 必须满足：
 
 ```text
-1. GameConfig 新增 wall 配置段，并有中文注释。
-2. GameConfig 新增 archer 配置段，并有中文注释。
-3. GameConfig.monster 扩展黑影 HP、攻击围墙间隔、攻击围墙伤害、攻击围墙范围等配置，并有中文注释。
-4. 地图中存在墙基或可建墙位置。
-5. 玩家可以消耗辉石派工人建墙。
-6. 工人建墙命令不可取消，并遵循 existing WorkerSystem 的派遣 / 工作流程。
-7. 围墙建成后拥有 HP。
-8. 黑影在局部感知或接近营地过程中可以攻击围墙。
-9. 围墙 HP 归零后会被摧毁或恢复为墙基。
-10. 玩家可以消耗辉石招募弓箭手。
-11. 弓箭手会自动寻找射程内黑影。
-12. 弓箭手会按攻击间隔对黑影造成伤害。
-13. 黑影 HP <= 0 后消失。
-14. v0.4 的黑影生成、4 格局部感知、辉石诱敌、工人被抓和 reserved 释放不被破坏。
-15. 本轮不实现矿山、流民、奇遇、复杂职业系统、正式美术、CSV / JSON 读取。
+1. GameConfig 新增 mine 配置段，并有中文注释。
+2. GameConfig 新增 refugee 配置段，并有中文注释。
+3. GameConfig 新增 population 配置段，并有中文注释。
+4. 地图中存在矿山。
+5. 地图中存在流民火堆。
+6. 玩家可以消耗辉石派工人采矿。
+7. 同一矿山同一时间只能被一个工人占用。
+8. 矿山能周期性产出辉石。
+9. 矿工被黑影抓走后，矿山占用会释放。
+10. 玩家可以消耗辉石招募流民。
+11. 流民会返回最近已激活营地或部落。
+12. 流民抵达后转化为空闲工人。
+13. 新工人拥有唯一 id，并可参与既有任务。
+14. v0.5 的围墙、弓箭手、黑影、辉石诱敌和工人被抓逻辑不被破坏。
+15. 本轮不实现完整职业系统、矿山升级、流民火堆刷新、奇遇、正式美术、CSV / JSON 读取。
 16. WEB_DEMO/index.html 未被修改。
 17. WEB_DEMO/src/main.js 仍只负责启动 GameApp。
 18. GPT_DEMO 未被修改。
@@ -487,13 +500,14 @@ v0.5 只实现最小防御闭环，不包含矿山、流民、完整职业系统
 ```text
 1. 修改了哪些文件。
 2. 新增了哪些模块。
-3. GameConfig.wall / GameConfig.archer / GameConfig.monster 新增了哪些字段。
-4. 围墙建造流程是什么。
-5. 黑影攻击围墙逻辑是什么。
-6. 弓箭手自动攻击逻辑是什么。
-7. 如何运行和验证。
-8. 哪些内容留到 v0.6。
-9. 是否存在已知问题。
+3. GameConfig.mine / GameConfig.refugee / GameConfig.population 新增了哪些字段。
+4. 矿山采矿流程是什么。
+5. 矿山占用如何防止残留。
+6. 流民招募和返程逻辑是什么。
+7. 流民如何转化为空闲工人。
+8. 如何运行和验证。
+9. 哪些内容留到 v0.7。
+10. 是否存在已知问题。
 ```
 
 ---
@@ -512,15 +526,17 @@ WEB_DEMO/src/game/config/GameConfig.js
 WEB_DEMO/src/game/state/GameState.js
 WEB_DEMO/src/game/world/MapGenerator.js
 WEB_DEMO/src/game/world/TileMap.js
-WEB_DEMO/src/game/systems/MonsterSystem.js
 WEB_DEMO/src/game/systems/WorkerSystem.js
+WEB_DEMO/src/game/systems/MonsterSystem.js
 WEB_DEMO/src/game/systems/InteractionSystem.js
 WEB_DEMO/src/app/GameApp.js
 ```
 
-必要时再读取渲染相关文件：
+必要时再读取：
 
 ```text
+WEB_DEMO/src/game/systems/ResourceSystem.js
+WEB_DEMO/src/game/systems/CampSystem.js
 WEB_DEMO/src/presentation/renderers/TileRenderer.js
 WEB_DEMO/src/presentation/renderers/UnitRenderer.js
 WEB_DEMO/src/presentation/renderers/HudRenderer.js
