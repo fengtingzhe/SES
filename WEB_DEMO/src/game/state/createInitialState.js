@@ -47,7 +47,7 @@ export function createInitialState() {
     },
     hover: null,
     message: {
-      text: 'v0.5-refactor：夜晚风险与工人避险迁移中。',
+      text: 'v0.6-refactor：临时辉石拾回与矿山采矿迁移中。',
       ttl: GameConfig.messageSeconds
     }
   };

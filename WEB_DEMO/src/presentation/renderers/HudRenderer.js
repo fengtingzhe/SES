@@ -14,6 +14,7 @@ export class HudRenderer {
     const totalWorkers = state.workers.filter(worker => !worker.lost).length;
     const idleWorkers = state.workers.filter(worker => !worker.lost && worker.state === 'idle').length;
     const fleeingWorkers = state.workers.filter(worker => !worker.lost && worker.flee).length;
+    const miningWorkers = state.workers.filter(worker => !worker.lost && worker.state === 'mining').length;
     const lostWorkers = state.workers.filter(worker => worker.lost).length;
     const busyWorkers = totalWorkers - idleWorkers;
     const phaseText = state.time.phase === 'night'
@@ -31,6 +32,7 @@ export class HudRenderer {
         <span>位置：<b>${position}</b></span>
         <span>朝向：<b>${facing}</b></span>
         <span>工人：<b>${idleWorkers}/${totalWorkers}</b> 空闲</span>
+        <span>采矿：<b>${miningWorkers}</b></span>
         <span>撤退：<b>${fleeingWorkers}</b></span>
         <span>失踪：<b>${lostWorkers}</b></span>
         <span>任务中：<b>${busyWorkers}</b></span>

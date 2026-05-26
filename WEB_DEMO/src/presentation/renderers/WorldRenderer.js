@@ -12,6 +12,7 @@ const TILE_COLORS = {
   [TileType.CAMP]: '#4d653d',
   [TileType.OLD_FIREPIT]: '#4b4b3e',
   [TileType.STONE]: '#74bdb2',
+  [TileType.MINE]: '#47545c',
   [TileType.FOG]: '#271b32',
   [TileType.GOAL]: '#35627c'
 };
@@ -96,6 +97,10 @@ export class WorldRenderer {
       if (tile.type === TileType.BRIDGE) this.label(context, screen.x, screen.y - 24, '桥');
       if (tile.type === TileType.VILLAGE) this.label(context, screen.x, screen.y - 24, '部落');
       if (tile.type === TileType.CAMP) this.label(context, screen.x, screen.y - 24, '营地');
+      if (tile.type === TileType.MINE) {
+        const label = tile.mine?.workerId ? '采矿中' : tile.reserved ? '前往矿山' : '矿山';
+        this.label(context, screen.x, screen.y - 24, label);
+      }
       if (tile.type === TileType.FOG) this.label(context, screen.x, screen.y - 24, '雾门');
       if (tile.type === TileType.GOAL) this.label(context, screen.x, screen.y - 24, '远方信标');
       if (hovered) this.label(context, screen.x, screen.y - 44, state.hover.label);
@@ -194,6 +199,7 @@ export class WorldRenderer {
       idle: '工人',
       moving: '前往',
       work: '工作',
+      mining: `采矿 ${Math.max(1, Math.ceil(GameConfig.mine.productionSeconds - worker.progress))}`,
       return: '返回',
       flee: '撤退'
     }[worker.state] ?? '工人';

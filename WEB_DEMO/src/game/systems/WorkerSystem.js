@@ -18,6 +18,16 @@ export class WorkerSystem {
 
       this.checkThreat(state, worker);
 
+      if (worker.state === 'mining') {
+        worker.progress += dt;
+        if (worker.progress >= GameConfig.mine.productionSeconds) {
+          worker.progress = 0;
+          this.resourceSystem.dropStoneNear(state, worker.x, worker.y, 1);
+          this.showMessage('矿山产出 1 个辉石。');
+        }
+        continue;
+      }
+
       if (!worker.job) continue;
 
       if (worker.state === 'moving' || worker.state === 'return' || worker.state === 'flee') {
@@ -35,12 +45,20 @@ export class WorkerSystem {
     const tile = state.world.map.cell(target.x, target.y);
     if (!tile) return false;
 
-    if (tile.reserved) {
+    if (target.action === JobType.MINE) {
+      if (!tile.mine) tile.mine = { workerId: null };
+      this.clearStaleMineOccupation(state, tile);
+
+      if (tile.reserved || tile.mine.workerId) {
+        this.showMessage('矿山已有工人。');
+        return false;
+      }
+    } else if (tile.reserved) {
       this.showMessage('已有工人正在处理。');
       return false;
     }
 
-    const cost = JobCosts[target.action];
+    const cost = JobCosts[target.action] ?? 0;
     if (state.resources.stone < cost) {
       this.showMessage('辉石不足。');
       return false;
@@ -75,12 +93,12 @@ export class WorkerSystem {
       homeId: home.id
     });
 
-    this.showMessage(`工人出发：${target.label}`);
+    this.showMessage(target.action === JobType.MINE ? '工人前往矿山。' : `工人出发：${target.label}`);
     return true;
   }
 
   getWorkerLocationsForTarget(state, target) {
-    if (target.action === JobType.CAMP) {
+    if (target.action === JobType.CAMP || target.action === JobType.MINE) {
       return [{ x: target.x, y: target.y }];
     }
     return state.world.map.neighbors(target.x, target.y);
@@ -106,7 +124,11 @@ export class WorkerSystem {
   checkThreat(state, worker) {
     if (state.time.phase !== 'night') return;
     if (worker.state === 'return' && !worker.flee) return;
-    if (worker.flee || !worker.job || worker.job.type === 'return') return;
+    if (worker.flee) return;
+
+    const miningJob = worker.state === 'mining' ? this.getMiningJob(state, worker) : null;
+    const currentJob = worker.job?.type === 'return' ? null : (worker.job ?? miningJob);
+    if (!currentJob) return;
 
     const range = GameConfig.worker.threatRange;
     const nearMonster = state.monsters.find(monster =>
@@ -117,7 +139,7 @@ export class WorkerSystem {
 
     if (!nearMonster) return;
 
-    const interruptedJob = { ...worker.job };
+    const interruptedJob = { ...currentJob };
     this.releaseWorkerTask(state, worker);
 
     const path = this.campSystem.pathToHome(state, worker, worker.homeId);
@@ -206,6 +228,31 @@ export class WorkerSystem {
       return;
     }
 
+    if (type === JobType.MINE) {
+      if (tile?.type !== TileType.MINE) {
+        this.returnHome(state, worker);
+        return;
+      }
+
+      if (!tile.mine) tile.mine = { workerId: null };
+      tile.reserved = null;
+      tile.mine.workerId = worker.id;
+      Object.assign(worker, {
+        x: tx,
+        y: ty,
+        job: null,
+        state: 'mining',
+        path: [],
+        pathIndex: 0,
+        progress: 0,
+        carry: 0,
+        flee: false,
+        interruptedJob: null
+      });
+      this.showMessage('工人开始采矿。');
+      return;
+    }
+
     if (tile?.reserved?.workerId === worker.id) {
       tile.reserved = null;
     }
@@ -245,6 +292,7 @@ export class WorkerSystem {
 
   releaseWorkerTask(state, worker) {
     this.releaseReservedTarget(state, worker.job, worker.id);
+    this.releaseMineOccupation(state, worker.id);
     Object.assign(worker, {
       job: null,
       path: [],
@@ -269,5 +317,35 @@ export class WorkerSystem {
         tile.reserved = null;
       }
     });
+  }
+
+  releaseMineOccupation(state, workerId) {
+    state.world.map.forEach(tile => {
+      if (tile.type === TileType.MINE && tile.mine?.workerId === workerId) {
+        tile.mine.workerId = null;
+        tile.reserved = null;
+      }
+    });
+  }
+
+  clearStaleMineOccupation(state, tile) {
+    const workerId = tile.mine?.workerId;
+    if (!workerId) return;
+
+    const owner = state.workers.find(worker => worker.id === workerId);
+    if (!owner || owner.lost || owner.state !== 'mining') {
+      tile.mine.workerId = null;
+      tile.reserved = null;
+    }
+  }
+
+  getMiningJob(state, worker) {
+    let job = null;
+    state.world.map.forEach((tile, x, y) => {
+      if (!job && tile.type === TileType.MINE && tile.mine?.workerId === worker.id) {
+        job = { type: JobType.MINE, tx: x, ty: y, label: '派工采矿' };
+      }
+    });
+    return job;
   }
 }

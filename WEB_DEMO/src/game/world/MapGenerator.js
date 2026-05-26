@@ -85,6 +85,7 @@ export class MapGenerator {
       }
     }
     map.setTile(start.x, start.y, TileType.VILLAGE);
+    map.setTile(start.x + 2, start.y, TileType.MINE, { mine: { workerId: null } });
   }
 
   placeWorkSites(map, path) {

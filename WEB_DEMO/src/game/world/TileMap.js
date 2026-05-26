@@ -8,6 +8,7 @@ export const TileType = {
   CAMP: 'camp',
   OLD_FIREPIT: 'oldFirepit',
   STONE: 'stone',
+  MINE: 'mine',
   FOG: 'fog',
   GOAL: 'goal'
 };
@@ -19,6 +20,7 @@ const PASSABLE_TYPES = new Set([
   TileType.CAMP,
   TileType.OLD_FIREPIT,
   TileType.STONE,
+  TileType.MINE,
   TileType.FOG,
   TileType.GOAL
 ]);
@@ -33,6 +35,7 @@ export function createTile(type = TileType.FOREST, extra = {}) {
     placed: false,
     job: null,
     reserved: null,
+    mine: null,
     ...extra
   };
 }

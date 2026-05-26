@@ -1,5 +1,5 @@
 export const GameConfig = {
-  version: 'WEB_DEMO v0.5-refactor',
+  version: 'WEB_DEMO v0.6-refactor',
 
   map: {
     width: 74,
@@ -29,6 +29,10 @@ export const GameConfig = {
     speed: 2.25,
     workDuration: 4,
     threatRange: 3
+  },
+
+  mine: {
+    productionSeconds: 30
   },
 
   dayNight: {

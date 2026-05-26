@@ -38,6 +38,17 @@ export class ResourceSystem {
     }
   }
 
+  pickPlacedStone(state, x, y) {
+    const tile = state.world.map.cell(x, y);
+    if (tile?.type !== TileType.STONE || !tile.placed) return false;
+
+    const value = tile.value || 1;
+    state.resources.stone += value;
+    state.world.map.blank(x, y);
+    this.showMessage(`拾回辉石 +${value}`);
+    return true;
+  }
+
   placeStone(state) {
     if (state.resources.stone <= 0) {
       this.showMessage('没有辉石可放置。');

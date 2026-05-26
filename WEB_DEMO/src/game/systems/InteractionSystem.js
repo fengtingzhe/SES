@@ -17,6 +17,15 @@ export class InteractionSystem {
       return this.createInfo(state, x, y, InteractionAction.GOAL, '抵达远方信标');
     }
 
+    if (tile.type === TileType.STONE && tile.placed) {
+      return this.createInfo(state, x, y, InteractionAction.PICK_PLACED_STONE, `拾回辉石 +${tile.value || 1}`);
+    }
+
+    if (tile.type === TileType.MINE) {
+      const label = tile.mine?.workerId || tile.reserved ? '矿山已有工人' : '派工采矿';
+      return this.createInfo(state, x, y, InteractionAction.MINE, label);
+    }
+
     if (tile.reserved) {
       return this.createInfo(state, x, y, InteractionAction.RESERVED, '已有工人正在处理');
     }
@@ -94,6 +103,11 @@ export class InteractionSystem {
       return;
     }
 
+    if (target.action === InteractionAction.PICK_PLACED_STONE) {
+      this.resourceSystem.pickPlacedStone(state, target.x, target.y);
+      return;
+    }
+
     if (target.action === InteractionAction.RESERVED) {
       this.showMessage('已有工人正在处理。');
       return;
@@ -102,7 +116,8 @@ export class InteractionSystem {
     if (
       target.action === InteractionAction.CHOP ||
       target.action === InteractionAction.REPAIR ||
-      target.action === InteractionAction.CAMP
+      target.action === InteractionAction.CAMP ||
+      target.action === InteractionAction.MINE
     ) {
       this.workerSystem.assignJob(state, target);
     }
