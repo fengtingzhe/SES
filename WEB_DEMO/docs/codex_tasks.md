@@ -2,247 +2,49 @@
 
 ---
 
-# 当前任务：WEB_DEMO v0.9-refactor 特殊事件与终点体验迁移
+# 当前任务：WEB_DEMO v0.9-audit-fix 补充 v0.9 代码迁移记录
 
 ## 任务背景
 
-WEB_DEMO 当前采用新的重构路线：
+WEB_DEMO v0.9-refactor 的代码已经完成并通过静态审核，核心内容包括：
 
 ```text
-GPT_DEMO = 玩法验证原型与规则基线
-WEB_DEMO = 工程化重构版本
+1. 颠倒森林
+2. 狐嫁女 / 狐狸成亲事件
+3. 终点灯塔 / 看海目标
+4. 基础胜利提示
+5. 小地图 / 辅助信息回归后置记录
 ```
 
-当前已完成：
+审核结论：
 
 ```text
-v0.1-refactor：GPT_DEMO 规则基线提取与 WEB_DEMO 阶段重定义
-v0.2-refactor：最小工程骨架与基础交互迁移
-v0.3-refactor：自动拾取修正 + 工人派工与营地扩张迁移
-v0.4-refactor：昼夜与黑影局部压力迁移
-v0.5-refactor：v0.4 小修复 + 工人夜晚避险、被抓与任务释放
-v0.6-refactor：临时辉石拾回修复 + 矿山与持续产出迁移
-v0.7-refactor：流民、人口池与职业转换迁移
-v0.7-audit-fix：审计文档同步修复
-v0.8-refactor：围墙、防御与弓箭手战斗闭环迁移
-v0.8-audit-fix：黑影攻击弓箭手范围偏差与围墙通行规则确认
+WEB_DEMO v0.9-refactor：代码通过，文档需补 v0.9 代码迁移记录。
 ```
 
-v0.8 已经补齐第一版防御闭环。当前 WEB_DEMO 已经具备探索、资源、派工、扩张、夜晚压力、防御、人口和职业基础。
+当前问题是：
 
-v0.9 的目标是迁移 GPT_DEMO 中的特殊事件和终点体验，让 WEB_DEMO 具备更完整的“旅程记忆点”和阶段目标。
+```text
+WEB_DEMO/design/audit/gpt_to_web_rule_audit_v1.md 的审计表已经更新 v0.9 状态，
+但缺少完整的 `v0.9-refactor 代码迁移记录` 章节。
+```
+
+本轮只做文档同步，不修改代码。
 
 ---
 
 ## 本轮目标
 
-从 `GPT_DEMO/index.html` 中定向迁移：
-
-```text
-颠倒森林
-狐嫁女 / 狐狸成亲事件
-终点灯塔 / 看海目标
-基础胜利提示
-可选：小地图 / 辅助信息回归
-```
-
-本轮重点验证：
-
-```text
-1. 地图中存在颠倒森林区域。
-2. 玩家进入颠倒森林后，移动输入方向反转。
-3. 离开颠倒森林后，输入方向恢复正常。
-4. 地图中存在狐嫁女事件点。
-5. 玩家可以触发狐嫁女事件。
-6. 狐嫁女事件有跟随 / 同步 / 失败或成功判定。
-7. 事件成功后奖励辉石，默认继承 GPT_DEMO：+4 辉石。
-8. 事件失败后无奖励，事件清除或进入已完成状态。
-9. 玩家到达终点灯塔 / 看海目标后，可以触发胜利提示。
-10. 胜利后游戏进入 completed / victory 状态，但 R 重置仍可用。
-```
-
----
-
-# 重要开发原则
-
-本轮继续采用：
-
-```text
-规则基线 + GPT_DEMO 定向代码迁移 + 模块化重构 + 规则继承审计
-```
-
-Codex 必须先定位 `GPT_DEMO/index.html` 中对应代码逻辑，再迁移到 WEB_DEMO 新模块。
-
-禁止整文件复制 `GPT_DEMO/index.html`。
-
----
-
-# 本轮只做
-
-## 一、颠倒森林
-
-从 `GPT_DEMO/index.html` 中定位颠倒森林相关代码。
-
-必须继承：
-
-```text
-1. 地图中存在颠倒森林区域。
-2. 玩家进入该区域后，移动输入方向反转。
-3. 方向反转只影响玩家输入，不应影响工人、黑影、流民或弓箭手 AI。
-4. 玩家离开颠倒森林后，输入方向恢复正常。
-5. HUD 或提示能让玩家理解当前处于颠倒森林。
-```
-
-建议实现：
-
-```text
-1. TileMap 新增 INVERTED_FOREST 或事件区域标记。
-2. PlayerSystem 或 InputManager 根据玩家所在地块决定是否反转输入。
-3. WorldRenderer 显示颠倒森林区域。
-4. HudRenderer 显示“颠倒森林：方向反转”。
-```
-
----
-
-## 二、狐嫁女 / 狐狸成亲事件
-
-从 `GPT_DEMO/index.html` 中定位狐嫁女事件逻辑。
-
-必须继承体验：
-
-```text
-1. 地图中存在狐嫁女事件点。
-2. 玩家靠近 / 互动后触发事件。
-3. 事件期间玩家需要跟随队列或保持同步。
-4. 成功后奖励辉石，默认 +4。
-5. 失败后无奖励。
-6. 事件结束后应清除事件或标记为已完成，避免重复刷奖励。
-```
-
-v0.9 最小实现：
-
-```text
-1. 可以用简化版队列 / 跟随事件，不要求正式美术。
-2. 需要有明确的事件开始、进行中、成功、失败、结束状态。
-3. 需要有玩家可理解的提示。
-4. 需要避免事件与普通 Space 互动、黑影、工人任务发生严重冲突。
-```
-
-建议实现：
-
-```text
-1. 新增 EventSystem.js 或 SpecialEventSystem.js。
-2. state.events 保存事件状态。
-3. GameConfig.events.foxWedding 配置奖励、持续时间、容错距离、同步窗口等。
-4. WorldRenderer 显示狐狸队列或事件标记。
-5. HudRenderer 显示事件提示和结果。
-```
-
----
-
-## 三、终点灯塔 / 看海目标
-
-从 `GPT_DEMO/index.html` 中定位终点目标和胜利逻辑。
-
-必须继承：
-
-```text
-1. 地图中存在终点目标。
-2. 玩家抵达终点附近后，可以通过 Space 互动完成目标。
-3. 完成目标后显示基础胜利提示。
-4. 胜利状态下停止主要游戏推进或至少停止失败压力。
-5. R 重置仍可用。
-```
-
-v0.9 最小实现：
-
-```text
-1. 使用当前终点 / 灯塔目标即可。
-2. 不需要制作完整结算界面。
-3. 需要让玩家明确知道已经“看见海”或“抵达终点”。
-4. 胜利后 state.status 可设为 completed / victory。
-```
-
----
-
-## 四、小地图 / 辅助信息回归（可选）
-
-GPT_DEMO 中存在辅助信息 / 小地图能力时，本轮可以选择性迁移。
-
-本项不作为核心验收阻塞项。
-
-如果实现，需要遵守：
-
-```text
-1. 只显示已探索区域或基础路线信息。
-2. 不破坏探索未知的核心体验。
-3. 不提前接入正式 UI / 美术。
-```
-
-如果不实现，需要在 known_issues 中记录：
-
-```text
-小地图 / 辅助信息回归后置。
-```
-
----
-
-## 五、HUD 与表现
-
-HUD 需要显示或能看出：
-
-```text
-1. 当前是否处于颠倒森林。
-2. 当前狐嫁女事件状态。
-3. 狐嫁女事件成功 / 失败结果。
-4. 终点目标互动提示。
-5. 胜利 / 看海完成提示。
-```
-
-WorldRenderer 需要显示：
-
-```text
-1. 颠倒森林区域。
-2. 狐嫁女事件点或队列。
-3. 终点灯塔 / 看海目标。
-4. 胜利状态基础表现。
-```
-
----
-
-# 本轮不要做
-
-禁止本轮实现：
-
-```text
-1. 不做正式剧情演出。
-2. 不做完整结算系统。
-3. 不做正式图片、音乐、字体。
-4. 不做存档系统。
-5. 不做 CSV / JSON 配置读取。
-6. 不做围墙升级。
-7. 不做营地损坏。
-8. 不做黑影攻击返程流民。
-9. 不做流民夜晚减速。
-10. 不做流民 lost。
-11. 不做大规模重构现有系统。
-12. 不把 GPT_DEMO/index.html 整文件复制到 WEB_DEMO。
-```
+补充完整的 v0.9-refactor 代码迁移记录，使审计文档与 v0.9 当前实现状态一致。
 
 ---
 
 # 允许修改
 
 ```text
-WEB_DEMO/src/**
-WEB_DEMO/package.json
-WEB_DEMO/index.html
-WEB_DEMO/docs/changelog.md
-WEB_DEMO/docs/acceptance_tests.md
-WEB_DEMO/docs/known_issues.md
 WEB_DEMO/docs/codex_tasks.md
 WEB_DEMO/design/audit/gpt_to_web_rule_audit_v1.md
-WEB_DEMO/design/systems/gpt_demo_rule_baseline_v1.md
+WEB_DEMO/docs/changelog.md
 ```
 
 ---
@@ -250,6 +52,7 @@ WEB_DEMO/design/systems/gpt_demo_rule_baseline_v1.md
 # 禁止修改
 
 ```text
+WEB_DEMO/src/**
 GPT_DEMO/**
 AI_RULES/**
 DESIGN_HUB/**
@@ -260,25 +63,22 @@ PROJECT_STATUS.md
 
 ---
 
-# 文档更新要求
+# 必须新增：v0.9-refactor 代码迁移记录
 
-完成后必须更新：
+在文件：
 
 ```text
-WEB_DEMO/docs/changelog.md
-WEB_DEMO/docs/acceptance_tests.md
-WEB_DEMO/docs/known_issues.md
 WEB_DEMO/design/audit/gpt_to_web_rule_audit_v1.md
 ```
 
-审计文档必须新增：
+中新增以下章节：
 
 ```markdown
 ## v0.9-refactor 代码迁移记录
 
 ### 迁移系统
 
-颠倒森林 / 狐嫁女事件 / 终点灯塔 / 看海目标 / 基础胜利提示 / 可选小地图
+颠倒森林 / 狐嫁女事件 / 终点灯塔 / 看海目标 / 基础胜利提示 / 小地图后置记录
 
 ### GPT_DEMO 来源
 
@@ -289,27 +89,103 @@ WEB_DEMO/design/audit/gpt_to_web_rule_audit_v1.md
 
 ### GPT_DEMO 原始行为
 
-由 Codex 根据实际定位填写。
+- 地图中存在颠倒森林区域。
+- 玩家进入颠倒森林后，移动输入方向反转。
+- 玩家离开颠倒森林后，移动输入恢复正常。
+- 地图中存在狐嫁女 / 狐狸成亲事件点。
+- 玩家靠近或互动后触发狐嫁女事件。
+- 事件期间玩家需要跟随队列或保持同步。
+- 事件成功后奖励辉石，默认 +4。
+- 事件失败后无奖励。
+- 事件结束后应清除或标记已完成，避免重复刷奖励。
+- 玩家抵达终点灯塔 / 看海目标后，可以完成阶段目标。
+- 完成目标后显示基础胜利提示。
 
 ### WEB_DEMO 迁移位置
 
-由 Codex 根据实际实现填写。
+- `WEB_DEMO/src/game/world/TileMap.js`
+- `WEB_DEMO/src/game/world/MapGenerator.js`
+- `WEB_DEMO/src/game/systems/PlayerSystem.js`
+- `WEB_DEMO/src/game/systems/SpecialEventSystem.js`
+- `WEB_DEMO/src/game/systems/InteractionSystem.js`
+- `WEB_DEMO/src/game/config/GameConfig.js`
+- `WEB_DEMO/src/game/state/createInitialState.js`
+- `WEB_DEMO/src/game/rules/interactionPriority.js`
+- `WEB_DEMO/src/app/GameApp.js`
+- `WEB_DEMO/src/presentation/renderers/WorldRenderer.js`
+- `WEB_DEMO/src/presentation/renderers/HudRenderer.js`
 
 ### 保持一致的规则
 
-由 Codex 填写。
+- 颠倒森林只影响玩家输入，不影响工人、黑影、流民或弓箭手 AI。
+- 颠倒森林离开后恢复正常输入。
+- 狐嫁女事件具备开始、进行、成功、失败和结束状态。
+- 狐嫁女事件成功奖励 +4 辉石。
+- 狐嫁女事件失败无奖励。
+- 狐嫁女事件结束后清除事件点或标记完成，避免重复刷奖励。
+- 终点灯塔 / 看海目标通过 Space 互动触发完成。
+- 完成后进入 completed / victory 类状态。
+- R 重置仍可用。
 
 ### 有意重构的部分
 
-由 Codex 填写。
+- 将 GPT_DEMO 单文件中的特殊事件逻辑拆入 `SpecialEventSystem`。
+- 将颠倒森林地块以 `INVERTED_FOREST` 标记并由 `PlayerSystem` 处理输入反转。
+- 将狐嫁女事件点以 `FOX_WEDDING` 标记并由事件系统管理状态。
+- 将终点完成状态记录在 `state.status` 和 `state.completion`。
+- 将事件提示和胜利提示拆分到 HUD 与 WorldRenderer 表现层。
 
 ### 有意重设计的部分
 
-无，除非明确说明并获得策划确认。
+无。
 
 ### 待确认问题
 
-由 Codex 填写。
+- 当前狐嫁女事件为简化队列 / 同步实现，后续是否需要更接近最终玩法表现待确认。
+- 小地图 / 辅助信息回归已后置到 v1.0-refactor 或后续体验回归任务。
+- 完整胜利结算、正式剧情演出、正式图片、音乐和字体均后置。
+```
+
+---
+
+# changelog 更新要求
+
+在文件：
+
+```text
+WEB_DEMO/docs/changelog.md
+```
+
+中新增：
+
+```markdown
+## v0.9-audit-fix
+
+状态：审计同步修复。
+
+内容：
+- 补充 v0.9-refactor 代码迁移记录。
+- 明确 v0.9 已迁移颠倒森林、狐嫁女事件、终点灯塔 / 看海目标和基础胜利提示。
+- 明确小地图 / 辅助信息回归后置到 v1.0-refactor 或后续体验回归任务。
+- 本轮不修改 WEB_DEMO/src 代码，不修改 GPT_DEMO。
+```
+
+---
+
+# 本轮不要做
+
+禁止本轮实现或修改：
+
+```text
+1. 不修改 WEB_DEMO/src/**。
+2. 不修改 GPT_DEMO/**。
+3. 不新增玩法功能。
+4. 不修改颠倒森林、狐嫁女或终点逻辑。
+5. 不迁移小地图。
+6. 不做正式剧情演出。
+7. 不做完整结算系统。
+8. 不做正式图片、音乐、字体。
+9. 不做存档系统。
 ```
 
 ---
@@ -319,27 +195,12 @@ WEB_DEMO/design/audit/gpt_to_web_rule_audit_v1.md
 必须满足：
 
 ```text
-1. 地图中存在颠倒森林区域。
-2. 玩家进入颠倒森林后，移动输入方向反转。
-3. 玩家离开颠倒森林后，移动输入恢复正常。
-4. HUD 或提示能反馈颠倒森林状态。
-5. 地图中存在狐嫁女事件点。
-6. 玩家可以触发狐嫁女事件。
-7. 狐嫁女事件有进行中状态。
-8. 狐嫁女事件可以成功或失败。
-9. 成功奖励默认 +4 辉石。
-10. 失败无奖励。
-11. 事件结束后不会重复刷奖励。
-12. 玩家抵达终点灯塔 / 看海目标后，可以触发胜利。
-13. 胜利后显示基础胜利提示。
-14. 胜利后进入 completed / victory 状态。
-15. R 重置仍可用。
-16. 本轮没有迁移正式剧情演出、正式结算系统、正式资源或存档系统。
-17. GPT_DEMO 未被修改。
-18. 审计文档记录 GPT_DEMO 到 WEB_DEMO 的迁移关系。
+1. gpt_to_web_rule_audit_v1.md 新增完整 `v0.9-refactor 代码迁移记录`。
+2. 迁移记录包含迁移系统、GPT_DEMO 来源、GPT_DEMO 原始行为、WEB_DEMO 迁移位置、保持一致规则、有意重构、有意重设计和待确认问题。
+3. changelog.md 新增 v0.9-audit-fix 记录。
+4. 本轮没有修改 WEB_DEMO/src/**。
+5. 本轮没有修改 GPT_DEMO/**。
 ```
-
-小地图 / 辅助信息不作为核心验收阻塞项；如果未迁移，需要写入 known_issues。
 
 ---
 
@@ -348,28 +209,9 @@ WEB_DEMO/design/audit/gpt_to_web_rule_audit_v1.md
 完成后请输出：
 
 ```text
-1. 修改 / 新增了哪些文件。
-2. GPT_DEMO 中定位了哪些来源函数、变量、常量或逻辑块。
-3. WEB_DEMO 中对应迁移到了哪些模块。
-4. 哪些 GPT_DEMO 规则保持一致。
-5. 哪些属于有意重构。
-6. 是否存在有意重设计。
-7. 是否存在待确认问题。
-8. 如何运行和验证。
-9. 哪些内容留到 v1.0-refactor。
-```
-
----
-
-# 给 Codex 的提醒
-
-本轮重点是把 GPT_DEMO 的“旅程记忆点”和“阶段目标”迁移正确。
-
-尤其关注：
-
-```text
-颠倒森林只影响玩家输入，不影响 AI；
-狐嫁女事件要有清晰的开始、进行、成功、失败、结束状态；
-终点目标要能真正结束本轮旅程；
-不要提前做正式剧情演出或完整结算系统。
+1. 修改了哪些文档。
+2. 是否新增 v0.9-refactor 代码迁移记录。
+3. 是否修改了 WEB_DEMO/src/**。
+4. 是否修改了 GPT_DEMO/**。
+5. 是否可以进入 v1.0-refactor。
 ```
