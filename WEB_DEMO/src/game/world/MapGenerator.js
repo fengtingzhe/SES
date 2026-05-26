@@ -17,6 +17,7 @@ export class MapGenerator {
     this.createBranches(map, path);
     this.createRiverSkeleton(map, path, 22);
     this.createRiverSkeleton(map, path, 45);
+    this.placeSpecialSites(map, path);
     this.createStartArea(map);
     this.placeWorkSites(map, path);
     this.placeRefugeeFires(map, path);
@@ -25,6 +26,38 @@ export class MapGenerator {
     map.setTile(this.config.goal.x, this.config.goal.y, TileType.GOAL);
 
     return { map, path };
+  }
+
+  placeSpecialSites(map, path) {
+    this.paintInvertedForest(map, path, 10, -5);
+    this.placeNearPath(map, path, 27, -5, TileType.FOX_WEDDING, {
+      event: { type: 'foxWedding', completed: false }
+    });
+    this.paintInvertedForest(map, path, 50, -4);
+  }
+
+  paintInvertedForest(map, path, index, offsetY) {
+    const anchor = path[Math.min(index, path.length - 1)];
+    const center = {
+      x: anchor.x,
+      y: clamp(anchor.y + offsetY, 4, this.config.height - 5)
+    };
+    const radius = GameConfig.events.invertedForest.radius;
+
+    for (let y = center.y - radius; y <= center.y + radius; y += 1) {
+      for (let x = center.x - radius; x <= center.x + radius; x += 1) {
+        if (!map.cell(x, y)) continue;
+        const d = Math.hypot(x - center.x, y - center.y);
+        if (d <= radius + 0.3) {
+          map.setTile(x, y, TileType.INVERTED_FOREST, { invertLabel: false });
+        }
+      }
+    }
+
+    const labelTile = map.cell(center.x, center.y);
+    if (labelTile?.type === TileType.INVERTED_FOREST) {
+      labelTile.invertLabel = true;
+    }
   }
 
   createMainPath(map) {

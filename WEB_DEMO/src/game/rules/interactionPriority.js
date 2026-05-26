@@ -4,6 +4,7 @@ export const InteractionAction = {
   CONVERT_WORKER: 'convertWorker',
   CONVERT_ARCHER: 'convertArcher',
   REFUGEE_COOLDOWN: 'refugeeCooldown',
+  FOX_WEDDING: 'foxWedding',
   PICK_PLACED_STONE: 'pickPlacedStone',
   MINE: 'mine',
   WALL: 'wall',
@@ -19,11 +20,12 @@ export const InteractionPriority = {
   [InteractionAction.CONVERT_WORKER]: 3,
   [InteractionAction.CONVERT_ARCHER]: 4,
   [InteractionAction.MINE]: 5,
-  [InteractionAction.PICK_PLACED_STONE]: 6,
-  [InteractionAction.WALL]: 7,
-  [InteractionAction.RESERVED]: 8,
-  [InteractionAction.REFUGEE_COOLDOWN]: 8,
-  [InteractionAction.CHOP]: 9,
-  [InteractionAction.REPAIR]: 10,
-  [InteractionAction.CAMP]: 11
+  [InteractionAction.FOX_WEDDING]: 6,
+  [InteractionAction.PICK_PLACED_STONE]: 7,
+  [InteractionAction.WALL]: 8,
+  [InteractionAction.RESERVED]: 9,
+  [InteractionAction.REFUGEE_COOLDOWN]: 9,
+  [InteractionAction.CHOP]: 10,
+  [InteractionAction.REPAIR]: 11,
+  [InteractionAction.CAMP]: 12
 };

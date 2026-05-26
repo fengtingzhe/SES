@@ -1,5 +1,5 @@
 export const GameConfig = {
-  version: 'WEB_DEMO v0.8-refactor',
+  version: 'WEB_DEMO v0.9-refactor',
 
   map: {
     width: 74,
@@ -50,6 +50,23 @@ export const GameConfig = {
     aimSeconds: 0.6,
     cooldownSeconds: 2.2,
     damage: 1
+  },
+
+  events: {
+    invertedForest: {
+      radius: 3
+    },
+    foxWedding: {
+      rewardStone: 4,
+      durationSeconds: 13,
+      moveCycleSeconds: 4,
+      moveSeconds: 2.8,
+      speed: 0.75,
+      foxCount: 5,
+      spacing: 0.8,
+      maxDistance: 3.2,
+      stopDistance: 3.5
+    }
   },
 
   dayNight: {

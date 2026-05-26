@@ -15,6 +15,16 @@ export function createInitialState() {
     monsters: [],
     refugees: [],
     archers: [],
+    events: {
+      foxWedding: {
+        active: false,
+        timer: 0,
+        origin: null,
+        failed: false,
+        foxes: [],
+        lastResult: null
+      }
+    },
     nextEntityId: 3,
     monsterSpawn: {
       spawnedThisNight: 0,
@@ -22,6 +32,7 @@ export function createInitialState() {
       nextId: 1
     },
     status: 'playing',
+    completion: null,
     time: {
       elapsed: GameConfig.dayNight.initialTime,
       day: 1,
@@ -36,7 +47,8 @@ export function createInitialState() {
       x: GameConfig.map.start.x,
       y: GameConfig.map.start.y,
       facing: { ...GameConfig.player.initialFacing },
-      invulnerable: 0
+      invulnerable: 0,
+      controlInverted: false
     },
     resources: {
       stone: GameConfig.resource.initialStone
@@ -51,7 +63,7 @@ export function createInitialState() {
     },
     hover: null,
     message: {
-      text: 'v0.8-refactor：围墙、防御与弓箭手战斗闭环迁移中。',
+      text: 'v0.9-refactor：特殊事件与终点体验迁移中。',
       ttl: GameConfig.messageSeconds
     }
   };

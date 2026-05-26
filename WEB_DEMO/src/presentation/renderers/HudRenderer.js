@@ -24,6 +24,7 @@ export class HudRenderer {
     const coolingArchers = state.archers.filter(archer => !archer.lost && archer.state === 'cooldown').length;
     const refugeeFires = this.countRefugeeFires(state);
     const walls = this.countWalls(state);
+    const foxWedding = this.foxWeddingStatus(state);
     const busyWorkers = totalWorkers - idleWorkers;
     const phaseText = state.time.phase === 'night'
       ? '夜晚'
@@ -39,6 +40,7 @@ export class HudRenderer {
         <span>辉石：<b>${state.resources.stone}</b></span>
         <span>位置：<b>${position}</b></span>
         <span>朝向：<b>${facing}</b></span>
+        <span>颠倒森林：<b>${state.player.controlInverted ? '方向反转' : '正常'}</b></span>
         <span>工人：<b>${idleWorkers}/${totalWorkers}</b> 空闲</span>
         <span>采矿：<b>${miningWorkers}</b></span>
         <span>待转职：<b>${unassignedPopulation}</b></span>
@@ -51,6 +53,8 @@ export class HudRenderer {
         <span>任务中：<b>${busyWorkers}</b></span>
         <span>家园：<b>${state.homes.length}</b></span>
         <span>黑影：<b>${state.monsters.length}</b>（本夜 <b>${state.monsterSpawn.spawnedThisNight}/${GameConfig.monster.perNight}</b>）</span>
+        <span>狐狸婚仪：<b>${foxWedding}</b></span>
+        <span>旅程：<b>${state.status === 'completed' ? '已看见海' : state.status === 'failed' ? '中断' : '进行中'}</b></span>
       </div>
       <div class="hint">当前提示：<b>${hint}</b></div>
     `;
@@ -90,5 +94,18 @@ export class HudRenderer {
     });
 
     return { total, damaged };
+  }
+
+  foxWeddingStatus(state) {
+    const event = state.events.foxWedding;
+    if (event.active) return `进行中 ${Math.ceil(event.timer)}s`;
+    if (event.lastResult === 'success') return '成功 +4';
+    if (event.lastResult === 'failed') return '失败';
+
+    let pending = 0;
+    state.world.map.forEach(tile => {
+      if (tile.type === TileType.FOX_WEDDING) pending += 1;
+    });
+    return pending > 0 ? '可触发' : '未触发/已结束';
   }
 }

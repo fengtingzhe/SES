@@ -16,6 +16,8 @@ const TILE_COLORS = {
   [TileType.REFUGEE_FIRE]: '#66513d',
   [TileType.WORKER_HUT]: '#806642',
   [TileType.ARCHER_CAMP]: '#5d774f',
+  [TileType.INVERTED_FOREST]: '#4f2f63',
+  [TileType.FOX_WEDDING]: '#7a4f57',
   [TileType.WALL_BASE]: '#8f815d',
   [TileType.WALL]: '#a8aaa3',
   [TileType.FOG]: '#271b32',
@@ -48,6 +50,7 @@ export class WorldRenderer {
     state.archers
       .filter(archer => !archer.lost)
       .forEach(archer => this.drawArcher(context, state, archer, viewport));
+    state.events.foxWedding.foxes.forEach(fox => this.drawFox(context, state, fox, viewport));
     state.monsters.forEach(monster => this.drawMonster(context, state, monster, viewport));
     this.drawPlayer(context, state, viewport);
     this.drawOverlay(context, state, viewport);
@@ -121,6 +124,13 @@ export class WorldRenderer {
       }
       if (tile.type === TileType.WORKER_HUT) this.label(context, screen.x, screen.y - 24, '工人屋');
       if (tile.type === TileType.ARCHER_CAMP) this.label(context, screen.x, screen.y - 24, '弓箭手营');
+      if (tile.type === TileType.INVERTED_FOREST && tile.invertLabel) {
+        this.label(context, screen.x, screen.y - 24, '颠倒森林');
+      }
+      if (tile.type === TileType.FOX_WEDDING) {
+        const label = state.events.foxWedding.active ? '婚仪进行中' : '狐狸成亲';
+        this.label(context, screen.x, screen.y - 24, label);
+      }
       if (tile.type === TileType.WALL_BASE) {
         this.label(context, screen.x, screen.y - 24, tile.reserved ? '建墙中' : '墙基');
       }
@@ -128,7 +138,7 @@ export class WorldRenderer {
         this.label(context, screen.x, screen.y - 24, `围墙 ${tile.hp || 0}/${GameConfig.wall.maxHp}`);
       }
       if (tile.type === TileType.FOG) this.label(context, screen.x, screen.y - 24, '雾门');
-      if (tile.type === TileType.GOAL) this.label(context, screen.x, screen.y - 24, '远方信标');
+      if (tile.type === TileType.GOAL) this.label(context, screen.x, screen.y - 24, '远方灯塔');
       if (hovered) this.label(context, screen.x, screen.y - 44, state.hover.label);
     }
 
@@ -185,7 +195,24 @@ export class WorldRenderer {
     context.fillStyle = '#b66f48';
     context.fillRect(point.x - 7, point.y - 11, 14, 18);
 
-    this.label(context, point.x, point.y - 42, directionLabel(state.player.facing));
+    this.label(
+      context,
+      point.x,
+      point.y - 42,
+      state.player.controlInverted ? '方向反转' : directionLabel(state.player.facing)
+    );
+  }
+
+  drawFox(context, state, fox, viewport) {
+    const point = this.toScreen(fox.x, fox.y, state, viewport);
+    context.save();
+    context.fillStyle = '#e49b55';
+    context.beginPath();
+    context.arc(point.x, point.y - 14, 5, 0, Math.PI * 2);
+    context.fill();
+    context.fillRect(point.x - 4, point.y - 8, 8, 12);
+    this.label(context, point.x, point.y - 32, '狐');
+    context.restore();
   }
 
   drawWorkerPaths(context, state, viewport) {
@@ -328,6 +355,17 @@ export class WorldRenderer {
       context.fillText('旅程中断', viewport.width / 2, viewport.height / 2);
       context.font = '16px system-ui, sans-serif';
       context.fillText('按 R 重新开始', viewport.width / 2, viewport.height / 2 + 36);
+    }
+
+    if (state.status === 'completed') {
+      context.fillStyle = 'rgba(4,18,22,.55)';
+      context.fillRect(0, 0, viewport.width, viewport.height);
+      context.fillStyle = '#fff1b8';
+      context.textAlign = 'center';
+      context.font = 'bold 34px system-ui, sans-serif';
+      context.fillText('你看见了海', viewport.width / 2, viewport.height / 2);
+      context.font = '16px system-ui, sans-serif';
+      context.fillText('阶段目标完成，按 R 重新开始', viewport.width / 2, viewport.height / 2 + 36);
     }
   }
 

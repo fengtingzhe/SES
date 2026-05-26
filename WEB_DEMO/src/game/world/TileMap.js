@@ -12,6 +12,8 @@ export const TileType = {
   REFUGEE_FIRE: 'refugeeFire',
   WORKER_HUT: 'workerHut',
   ARCHER_CAMP: 'archerCamp',
+  INVERTED_FOREST: 'invertedForest',
+  FOX_WEDDING: 'foxWedding',
   WALL_BASE: 'wallBase',
   WALL: 'wall',
   FOG: 'fog',
@@ -29,6 +31,8 @@ const PASSABLE_TYPES = new Set([
   TileType.REFUGEE_FIRE,
   TileType.WORKER_HUT,
   TileType.ARCHER_CAMP,
+  TileType.INVERTED_FOREST,
+  TileType.FOX_WEDDING,
   TileType.WALL_BASE,
   TileType.WALL,
   TileType.FOG,
@@ -47,6 +51,8 @@ export function createTile(type = TileType.FOREST, extra = {}) {
     reserved: null,
     mine: null,
     refugee: null,
+    event: null,
+    invertLabel: false,
     hp: null,
     ...extra
   };

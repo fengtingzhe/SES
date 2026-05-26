@@ -3,10 +3,11 @@ import { TileType } from '../world/TileMap.js';
 import { InteractionAction, InteractionPriority } from '../rules/interactionPriority.js';
 
 export class InteractionSystem {
-  constructor(resourceSystem, workerSystem, populationSystem, showMessage) {
+  constructor(resourceSystem, workerSystem, populationSystem, specialEventSystem, showMessage) {
     this.resourceSystem = resourceSystem;
     this.workerSystem = workerSystem;
     this.populationSystem = populationSystem;
+    this.specialEventSystem = specialEventSystem;
     this.showMessage = showMessage;
   }
 
@@ -15,7 +16,7 @@ export class InteractionSystem {
     if (!tile || !tile.discovered) return null;
 
     if (tile.type === TileType.GOAL) {
-      return this.createInfo(state, x, y, InteractionAction.GOAL, '抵达远方信标');
+      return this.createInfo(state, x, y, InteractionAction.GOAL, '抵达远方灯塔');
     }
 
     if (tile.type === TileType.STONE && tile.placed) {
@@ -42,6 +43,11 @@ export class InteractionSystem {
     if (tile.type === TileType.MINE) {
       const label = tile.mine?.workerId || tile.reserved ? '矿山已有工人' : '派工采矿';
       return this.createInfo(state, x, y, InteractionAction.MINE, label);
+    }
+
+    if (tile.type === TileType.FOX_WEDDING) {
+      const label = state.events.foxWedding.active ? '婚仪进行中' : '狐狸成亲';
+      return this.createInfo(state, x, y, InteractionAction.FOX_WEDDING, label);
     }
 
     if (tile.type === TileType.WALL_BASE) {
@@ -120,6 +126,11 @@ export class InteractionSystem {
       return;
     }
 
+    if (state.status === 'completed') {
+      this.showMessage('你已经看见海了。按 R 可以重新开始。');
+      return;
+    }
+
     const target = this.findInteract(state, false);
 
     if (!target) {
@@ -128,7 +139,13 @@ export class InteractionSystem {
     }
 
     if (target.action === InteractionAction.GOAL) {
-      this.showMessage('你听见了远处像海一样的风。阶段目标完成。');
+      state.status = 'completed';
+      state.completion = {
+        type: 'sea',
+        day: state.time.day,
+        elapsed: state.time.elapsed
+      };
+      this.showMessage('你抵达远方灯塔，看见了海。阶段目标完成。');
       return;
     }
 
@@ -154,6 +171,11 @@ export class InteractionSystem {
 
     if (target.action === InteractionAction.CONVERT_ARCHER) {
       this.populationSystem.convert(state, 'archer', target);
+      return;
+    }
+
+    if (target.action === InteractionAction.FOX_WEDDING) {
+      this.specialEventSystem.startFoxWedding(state, target);
       return;
     }
 

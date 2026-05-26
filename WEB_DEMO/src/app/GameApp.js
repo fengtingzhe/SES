@@ -9,6 +9,7 @@ import { MonsterSystem } from '../game/systems/MonsterSystem.js';
 import { PlayerSystem } from '../game/systems/PlayerSystem.js';
 import { PopulationSystem } from '../game/systems/PopulationSystem.js';
 import { ResourceSystem } from '../game/systems/ResourceSystem.js';
+import { SpecialEventSystem } from '../game/systems/SpecialEventSystem.js';
 import { VisionSystem } from '../game/systems/VisionSystem.js';
 import { WorkerSystem } from '../game/systems/WorkerSystem.js';
 import { CanvasRenderer } from '../presentation/renderers/CanvasRenderer.js';
@@ -50,6 +51,7 @@ export class GameApp {
     this.workerSystem = new WorkerSystem(this.campSystem, this.resourceSystem, this.showMessage);
     this.populationSystem = new PopulationSystem(this.campSystem, this.showMessage);
     this.archerSystem = new ArcherSystem(this.showMessage);
+    this.specialEventSystem = new SpecialEventSystem(this.showMessage);
     this.monsterSystem = new MonsterSystem(
       this.campSystem,
       this.dayNightSystem,
@@ -60,6 +62,7 @@ export class GameApp {
       this.resourceSystem,
       this.workerSystem,
       this.populationSystem,
+      this.specialEventSystem,
       this.showMessage
     );
 
@@ -95,6 +98,7 @@ export class GameApp {
 
   update(dt) {
     if (this.state.status === 'playing') {
+      const playerMovement = this.inputManager.getMovementVector();
       this.dayNightSystem.update(this.state, dt);
       this.state.player.invulnerable = Math.max(0, this.state.player.invulnerable - dt);
       this.playerSystem.update(this.state, dt);
@@ -102,6 +106,7 @@ export class GameApp {
       this.workerSystem.update(this.state, dt);
       this.populationSystem.update(this.state, dt);
       this.archerSystem.update(this.state, dt);
+      this.specialEventSystem.update(this.state, dt, playerMovement);
       this.monsterSystem.update(this.state, dt);
     }
 
