@@ -1,5 +1,5 @@
 export const GameConfig = {
-  version: 'WEB_DEMO v0.4-refactor',
+  version: 'WEB_DEMO v0.5-refactor',
 
   map: {
     width: 74,
@@ -27,7 +27,8 @@ export const GameConfig = {
 
   worker: {
     speed: 2.25,
-    workDuration: 4
+    workDuration: 4,
+    threatRange: 3
   },
 
   dayNight: {

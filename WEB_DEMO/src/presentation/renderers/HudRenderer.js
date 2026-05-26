@@ -13,6 +13,8 @@ export class HudRenderer {
     const hint = state.hover?.label ?? '面前/附近无可互动目标；Space 可放置辉石';
     const totalWorkers = state.workers.filter(worker => !worker.lost).length;
     const idleWorkers = state.workers.filter(worker => !worker.lost && worker.state === 'idle').length;
+    const fleeingWorkers = state.workers.filter(worker => !worker.lost && worker.flee).length;
+    const lostWorkers = state.workers.filter(worker => worker.lost).length;
     const busyWorkers = totalWorkers - idleWorkers;
     const phaseText = state.time.phase === 'night'
       ? '夜晚'
@@ -29,6 +31,8 @@ export class HudRenderer {
         <span>位置：<b>${position}</b></span>
         <span>朝向：<b>${facing}</b></span>
         <span>工人：<b>${idleWorkers}/${totalWorkers}</b> 空闲</span>
+        <span>撤退：<b>${fleeingWorkers}</b></span>
+        <span>失踪：<b>${lostWorkers}</b></span>
         <span>任务中：<b>${busyWorkers}</b></span>
         <span>家园：<b>${state.homes.length}</b></span>
         <span>黑影：<b>${state.monsters.length}</b>（本夜 <b>${state.monsterSpawn.spawnedThisNight}/${GameConfig.monster.perNight}</b>）</span>

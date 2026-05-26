@@ -47,7 +47,7 @@ export function createInitialState() {
     },
     hover: null,
     message: {
-      text: 'v0.3-refactor：自动拾取与派工建设已启动。',
+      text: 'v0.5-refactor：夜晚风险与工人避险迁移中。',
       ttl: GameConfig.messageSeconds
     }
   };
@@ -65,6 +65,8 @@ function createWorker(id, x, y, homeId) {
     pathIndex: 0,
     progress: 0,
     carry: 0,
-    lost: false
+    lost: false,
+    flee: false,
+    interruptedJob: null
   };
 }

@@ -14,9 +14,13 @@ export class WorkerSystem {
 
   update(state, dt) {
     for (const worker of state.workers) {
-      if (worker.lost || !worker.job) continue;
+      if (worker.lost) continue;
 
-      if (worker.state === 'moving' || worker.state === 'return') {
+      this.checkThreat(state, worker);
+
+      if (!worker.job) continue;
+
+      if (worker.state === 'moving' || worker.state === 'return' || worker.state === 'flee') {
         this.walk(state, worker, dt);
       } else if (worker.state === 'work') {
         worker.progress += dt;
@@ -86,7 +90,7 @@ export class WorkerSystem {
     let best = null;
 
     for (const worker of state.workers.filter(item =>
-      !item.lost && (item.state === 'idle' || item.state === 'return')
+      !item.lost && !item.flee && (item.state === 'idle' || item.state === 'return')
     )) {
       for (const location of locations) {
         const path = findPath(state.world.map, worker, location);
@@ -99,9 +103,47 @@ export class WorkerSystem {
     return best;
   }
 
+  checkThreat(state, worker) {
+    if (state.time.phase !== 'night') return;
+    if (worker.state === 'return' && !worker.flee) return;
+    if (worker.flee || !worker.job || worker.job.type === 'return') return;
+
+    const range = GameConfig.worker.threatRange;
+    const nearMonster = state.monsters.find(monster =>
+      !monster.dead &&
+      Math.abs(monster.x - worker.x) <= range &&
+      Math.abs(monster.y - worker.y) <= range
+    );
+
+    if (!nearMonster) return;
+
+    const interruptedJob = { ...worker.job };
+    this.releaseWorkerTask(state, worker);
+
+    const path = this.campSystem.pathToHome(state, worker, worker.homeId);
+    if (!path) {
+      this.home(worker);
+      this.showMessage('工人发现黑影，但找不到回家道路。');
+      return;
+    }
+
+    Object.assign(worker, {
+      job: { type: 'return' },
+      path,
+      pathIndex: 1,
+      state: 'flee',
+      progress: 0,
+      carry: 0,
+      flee: true,
+      interruptedJob
+    });
+
+    this.showMessage('工人发现黑影，暂时撤退。');
+  }
+
   walk(state, worker, dt) {
     if (!worker.path || worker.pathIndex >= worker.path.length) {
-      if (worker.state === 'return') this.home(worker);
+      if (worker.state === 'return' || worker.state === 'flee') this.home(worker);
       else worker.state = 'work';
       return;
     }
@@ -118,7 +160,7 @@ export class WorkerSystem {
       worker.pathIndex += 1;
 
       if (worker.pathIndex >= worker.path.length) {
-        if (worker.state === 'return') this.home(worker);
+        if (worker.state === 'return' || worker.state === 'flee') this.home(worker);
         else worker.state = 'work';
       }
     }
@@ -156,7 +198,9 @@ export class WorkerSystem {
         path: [],
         pathIndex: 0,
         progress: 0,
-        carry: 0
+        carry: 0,
+        flee: false,
+        interruptedJob: null
       });
       this.showMessage('新营地建成，工人留在当前营地。');
       return;
@@ -181,7 +225,8 @@ export class WorkerSystem {
       path,
       pathIndex: 1,
       state: 'return',
-      progress: 0
+      progress: 0,
+      flee: false
     });
   }
 
@@ -192,13 +237,37 @@ export class WorkerSystem {
       path: [],
       pathIndex: 0,
       progress: 0,
+      carry: 0,
+      flee: false,
+      interruptedJob: null
+    });
+  }
+
+  releaseWorkerTask(state, worker) {
+    this.releaseReservedTarget(state, worker.job, worker.id);
+    Object.assign(worker, {
+      job: null,
+      path: [],
+      pathIndex: 0,
+      progress: 0,
       carry: 0
     });
   }
 
-  releaseReservedTarget(state, job) {
-    if (!job || job.type === 'return') return;
-    const tile = state.world.map.cell(job.tx, job.ty);
-    if (tile?.reserved) tile.reserved = null;
+  releaseReservedTarget(state, job, workerId = null) {
+    if (job && job.type !== 'return') {
+      const tile = state.world.map.cell(job.tx, job.ty);
+      if (tile?.reserved && (!workerId || tile.reserved.workerId === workerId)) {
+        tile.reserved = null;
+      }
+    }
+
+    if (!workerId) return;
+
+    state.world.map.forEach(tile => {
+      if (tile.reserved?.workerId === workerId) {
+        tile.reserved = null;
+      }
+    });
   }
 }

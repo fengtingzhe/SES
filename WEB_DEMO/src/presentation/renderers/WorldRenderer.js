@@ -35,7 +35,9 @@ export class WorldRenderer {
     this.updateCamera(state, viewport);
     this.drawTiles(context, state, viewport);
     this.drawWorkerPaths(context, state, viewport);
-    state.workers.forEach(worker => this.drawWorker(context, state, worker, viewport));
+    state.workers
+      .filter(worker => !worker.lost)
+      .forEach(worker => this.drawWorker(context, state, worker, viewport));
     state.monsters.forEach(monster => this.drawMonster(context, state, monster, viewport));
     this.drawPlayer(context, state, viewport);
     this.drawOverlay(context, state, viewport);
@@ -192,7 +194,8 @@ export class WorldRenderer {
       idle: '工人',
       moving: '前往',
       work: '工作',
-      return: '返回'
+      return: '返回',
+      flee: '撤退'
     }[worker.state] ?? '工人';
     this.label(context, point.x, point.y - 34, labelText);
     context.restore();

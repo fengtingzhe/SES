@@ -4,9 +4,10 @@ import { distance, tacticalDistance } from '../utils/grid.js';
 import { TileType } from '../world/TileMap.js';
 
 export class MonsterSystem {
-  constructor(campSystem, dayNightSystem, showMessage) {
+  constructor(campSystem, dayNightSystem, workerSystem, showMessage) {
     this.campSystem = campSystem;
     this.dayNightSystem = dayNightSystem;
+    this.workerSystem = workerSystem;
     this.showMessage = showMessage;
   }
 
@@ -21,7 +22,7 @@ export class MonsterSystem {
   spawn(state) {
     if (!this.dayNightSystem.isNight(state)) return;
     if (state.monsterSpawn.spawnedThisNight >= GameConfig.monster.perNight) return;
-    if (state.monsters.length > GameConfig.monster.maxActiveBeforePause) return;
+    if (state.monsters.length >= GameConfig.monster.maxActiveBeforePause) return;
     if (state.monsterSpawn.cooldown > 0) return;
 
     const fogGates = this.getFogGates(state);
@@ -63,11 +64,7 @@ export class MonsterSystem {
       }
 
       const target = this.findTarget(state, monster);
-      if (!target) {
-        monster.returning = true;
-        this.returnToFog(state, monster, dt);
-        continue;
-      }
+      if (!target) continue;
 
       if (target.kind !== MonsterTargetKind.CAMP) {
         const key = monsterTargetKey(target);
@@ -85,8 +82,9 @@ export class MonsterSystem {
 
   findTarget(state, monster) {
     const stones = this.findStoneTargets(state, monster);
+    const workerTargets = this.findWorkerTargets(state, monster);
     const playerTargets = this.findPlayerTarget(state, monster);
-    const allTargets = [...stones, ...playerTargets];
+    const allTargets = [...stones, ...workerTargets, ...playerTargets];
 
     if (monster.targetLock > 0 && monster.targetKey) {
       const locked = allTargets.find(target => monsterTargetKey(target) === monster.targetKey);
@@ -94,6 +92,7 @@ export class MonsterSystem {
     }
 
     if (stones.length) return stones[0];
+    if (workerTargets.length) return workerTargets[0];
     if (playerTargets.length) return playerTargets[0];
 
     if (!monster.raidCamp) monster.raidCamp = this.campSystem.nearestHome(state, monster);
@@ -115,6 +114,16 @@ export class MonsterSystem {
 
     targets.sort((a, b) => distance(monster, a.object) - distance(monster, b.object));
     return targets;
+  }
+
+  findWorkerTargets(state, monster) {
+    return state.workers
+      .filter(worker =>
+        !worker.lost &&
+        tacticalDistance(monster, worker) <= GameConfig.monster.tacticalRange
+      )
+      .sort((a, b) => distance(monster, a) - distance(monster, b))
+      .map(worker => ({ kind: MonsterTargetKind.WORKER, object: worker }));
   }
 
   findPlayerTarget(state, monster) {
@@ -154,6 +163,12 @@ export class MonsterSystem {
     if (target.kind === MonsterTargetKind.PLAYER) {
       this.hitPlayer(state);
       monster.dead = true;
+      return;
+    }
+
+    if (target.kind === MonsterTargetKind.WORKER) {
+      this.hitWorker(state, object);
+      monster.dead = true;
     }
   }
 
@@ -168,6 +183,20 @@ export class MonsterSystem {
 
     state.status = 'failed';
     this.showMessage('辉石耗尽，旅程中断。');
+  }
+
+  hitWorker(state, worker) {
+    if (!worker || worker.lost) return;
+
+    this.workerSystem.releaseWorkerTask(state, worker);
+    Object.assign(worker, {
+      lost: true,
+      state: 'lost',
+      flee: false,
+      interruptedJob: null
+    });
+
+    this.showMessage('一名工人被黑林影拖走。');
   }
 
   returnToFog(state, monster, dt) {

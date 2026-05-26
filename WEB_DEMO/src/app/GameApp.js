@@ -46,7 +46,12 @@ export class GameApp {
     this.dayNightSystem = new DayNightSystem();
     this.resourceSystem = new ResourceSystem(this.showMessage);
     this.workerSystem = new WorkerSystem(this.campSystem, this.resourceSystem, this.showMessage);
-    this.monsterSystem = new MonsterSystem(this.campSystem, this.dayNightSystem, this.showMessage);
+    this.monsterSystem = new MonsterSystem(
+      this.campSystem,
+      this.dayNightSystem,
+      this.workerSystem,
+      this.showMessage
+    );
     this.interactionSystem = new InteractionSystem(this.resourceSystem, this.workerSystem, this.showMessage);
 
     this.canvasRenderer.attach();

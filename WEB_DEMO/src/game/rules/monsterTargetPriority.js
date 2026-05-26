@@ -1,5 +1,6 @@
 export const MonsterTargetKind = {
   STONE: 'stone',
+  WORKER: 'worker',
   PLAYER: 'player',
   CAMP: 'camp'
 };
@@ -13,5 +14,6 @@ export function monsterTargetKey(target) {
   }
 
   if (target.kind === MonsterTargetKind.PLAYER) return 'player';
+  if (target.kind === MonsterTargetKind.WORKER) return `worker:${object.id}`;
   return target.kind;
 }
