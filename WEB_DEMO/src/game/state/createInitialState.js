@@ -12,6 +12,19 @@ export function createInitialState() {
     version: GameConfig.version,
     world,
     homes: [startHome],
+    monsters: [],
+    monsterSpawn: {
+      spawnedThisNight: 0,
+      cooldown: 0,
+      nextId: 1
+    },
+    status: 'playing',
+    time: {
+      elapsed: GameConfig.dayNight.initialTime,
+      day: 1,
+      phase: 'day',
+      wasNight: false
+    },
     workers: [
       createWorker(1, GameConfig.map.start.x, GameConfig.map.start.y - 1, startHome.id),
       createWorker(2, GameConfig.map.start.x, GameConfig.map.start.y + 1, startHome.id)
@@ -19,7 +32,8 @@ export function createInitialState() {
     player: {
       x: GameConfig.map.start.x,
       y: GameConfig.map.start.y,
-      facing: { ...GameConfig.player.initialFacing }
+      facing: { ...GameConfig.player.initialFacing },
+      invulnerable: 0
     },
     resources: {
       stone: GameConfig.resource.initialStone

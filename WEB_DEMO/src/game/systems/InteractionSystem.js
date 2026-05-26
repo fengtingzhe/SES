@@ -77,6 +77,11 @@ export class InteractionSystem {
   }
 
   interact(state) {
+    if (state.status === 'failed') {
+      this.showMessage('旅程中断，按 R 重新开始。');
+      return;
+    }
+
     const target = this.findInteract(state, false);
 
     if (!target) {

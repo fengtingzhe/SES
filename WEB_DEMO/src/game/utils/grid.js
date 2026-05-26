@@ -6,6 +6,10 @@ export function distance(a, b) {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
+export function tacticalDistance(a, b) {
+  return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+}
+
 export function normalizeVector(x, y) {
   const length = Math.hypot(x, y) || 1;
   return { x: x / length, y: y / length };

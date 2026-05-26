@@ -8,6 +8,7 @@ export const TileType = {
   CAMP: 'camp',
   OLD_FIREPIT: 'oldFirepit',
   STONE: 'stone',
+  FOG: 'fog',
   GOAL: 'goal'
 };
 
@@ -18,6 +19,7 @@ const PASSABLE_TYPES = new Set([
   TileType.CAMP,
   TileType.OLD_FIREPIT,
   TileType.STONE,
+  TileType.FOG,
   TileType.GOAL
 ]);
 

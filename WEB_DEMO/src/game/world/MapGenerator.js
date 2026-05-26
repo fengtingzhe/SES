@@ -18,6 +18,7 @@ export class MapGenerator {
     this.createRiverSkeleton(map, path, 45);
     this.createStartArea(map);
     this.placeWorkSites(map, path);
+    this.placeFogGates(map, path);
     this.placeStarterStones(map, path);
     map.setTile(this.config.goal.x, this.config.goal.y, TileType.GOAL);
 
@@ -106,6 +107,18 @@ export class MapGenerator {
     if (campSpot) {
       map.setTile(campSpot.x, campSpot.y, TileType.OLD_FIREPIT, { job: 'camp' });
     }
+  }
+
+  placeFogGates(map, path) {
+    this.placeNearPath(map, path, 36, -4, TileType.FOG);
+    this.placeNearPath(map, path, 48, 5, TileType.FOG);
+  }
+
+  placeNearPath(map, path, index, offsetY, type, extra = {}) {
+    const anchor = path[Math.min(index, path.length - 1)];
+    const y = clamp(anchor.y + offsetY, 4, this.config.height - 5);
+    const spot = this.findNearestGround(map, anchor.x, y);
+    if (spot) map.setTile(spot.x, spot.y, type, extra);
   }
 
   findNearestGround(map, x, y) {

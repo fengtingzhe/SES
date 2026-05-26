@@ -1,5 +1,5 @@
 export const GameConfig = {
-  version: 'WEB_DEMO v0.3-refactor',
+  version: 'WEB_DEMO v0.4-refactor',
 
   map: {
     width: 74,
@@ -28,6 +28,27 @@ export const GameConfig = {
   worker: {
     speed: 2.25,
     workDuration: 4
+  },
+
+  dayNight: {
+    dayLength: 95,
+    initialTime: 8,
+    nightStartEarly: 0.08,
+    duskStart: 0.52,
+    nightStartLate: 0.66
+  },
+
+  monster: {
+    perNight: 2,
+    spawnInterval: 3,
+    maxActiveBeforePause: 5,
+    tacticalRange: 4,
+    targetLockSeconds: 1.2,
+    speed: 1.6,
+    hitDistance: 0.35,
+    campStopDistance: 0.25,
+    hp: 1,
+    playerInvulnerableSeconds: 1.6
   },
 
   home: {

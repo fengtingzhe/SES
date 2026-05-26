@@ -12,6 +12,7 @@ const TILE_COLORS = {
   [TileType.CAMP]: '#4d653d',
   [TileType.OLD_FIREPIT]: '#4b4b3e',
   [TileType.STONE]: '#74bdb2',
+  [TileType.FOG]: '#271b32',
   [TileType.GOAL]: '#35627c'
 };
 
@@ -35,7 +36,9 @@ export class WorldRenderer {
     this.drawTiles(context, state, viewport);
     this.drawWorkerPaths(context, state, viewport);
     state.workers.forEach(worker => this.drawWorker(context, state, worker, viewport));
+    state.monsters.forEach(monster => this.drawMonster(context, state, monster, viewport));
     this.drawPlayer(context, state, viewport);
+    this.drawOverlay(context, state, viewport);
   }
 
   drawTiles(context, state, viewport) {
@@ -91,6 +94,7 @@ export class WorldRenderer {
       if (tile.type === TileType.BRIDGE) this.label(context, screen.x, screen.y - 24, '桥');
       if (tile.type === TileType.VILLAGE) this.label(context, screen.x, screen.y - 24, '部落');
       if (tile.type === TileType.CAMP) this.label(context, screen.x, screen.y - 24, '营地');
+      if (tile.type === TileType.FOG) this.label(context, screen.x, screen.y - 24, '雾门');
       if (tile.type === TileType.GOAL) this.label(context, screen.x, screen.y - 24, '远方信标');
       if (hovered) this.label(context, screen.x, screen.y - 44, state.hover.label);
     }
@@ -192,6 +196,41 @@ export class WorldRenderer {
     }[worker.state] ?? '工人';
     this.label(context, point.x, point.y - 34, labelText);
     context.restore();
+  }
+
+  drawMonster(context, state, monster, viewport) {
+    const point = this.toScreen(monster.x, monster.y, state, viewport);
+    context.save();
+    context.fillStyle = monster.returning ? '#21142a' : '#111111';
+    context.beginPath();
+    context.arc(point.x, point.y - 16, 8, 0, Math.PI * 2);
+    context.fill();
+    context.fillStyle = '#32203f';
+    context.fillRect(point.x - 7, point.y - 8, 14, 16);
+    this.label(context, point.x, point.y - 38, monster.returning ? '返回雾门' : '黑林影');
+    context.restore();
+  }
+
+  drawOverlay(context, state, viewport) {
+    const alpha = state.time.phase === 'night'
+      ? 0.42
+      : state.time.phase === 'dusk'
+        ? 0.18
+        : 0.04;
+
+    context.fillStyle = `rgba(2,8,18,${alpha})`;
+    context.fillRect(0, 0, viewport.width, viewport.height);
+
+    if (state.status === 'failed') {
+      context.fillStyle = 'rgba(0,0,0,.62)';
+      context.fillRect(0, 0, viewport.width, viewport.height);
+      context.fillStyle = '#fff1b8';
+      context.textAlign = 'center';
+      context.font = 'bold 34px system-ui, sans-serif';
+      context.fillText('旅程中断', viewport.width / 2, viewport.height / 2);
+      context.font = '16px system-ui, sans-serif';
+      context.fillText('按 R 重新开始', viewport.width / 2, viewport.height / 2 + 36);
+    }
   }
 
   label(context, x, y, text) {
