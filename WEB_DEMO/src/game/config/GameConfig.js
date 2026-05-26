@@ -1,5 +1,5 @@
 export const GameConfig = {
-  version: 'WEB_DEMO v0.6-refactor',
+  version: 'WEB_DEMO v0.7-refactor',
 
   map: {
     width: 74,
@@ -22,7 +22,11 @@ export const GameConfig = {
   },
 
   population: {
-    initialWorkers: 2
+    initialWorkers: 2,
+    recruitCost: 1,
+    refugeeFireCooldown: 10,
+    refugeeSpeed: 1.75,
+    conversionCost: 1
   },
 
   worker: {

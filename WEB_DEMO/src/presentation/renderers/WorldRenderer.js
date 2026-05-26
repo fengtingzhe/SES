@@ -13,6 +13,9 @@ const TILE_COLORS = {
   [TileType.OLD_FIREPIT]: '#4b4b3e',
   [TileType.STONE]: '#74bdb2',
   [TileType.MINE]: '#47545c',
+  [TileType.REFUGEE_FIRE]: '#66513d',
+  [TileType.WORKER_HUT]: '#806642',
+  [TileType.ARCHER_CAMP]: '#5d774f',
   [TileType.FOG]: '#271b32',
   [TileType.GOAL]: '#35627c'
 };
@@ -39,6 +42,10 @@ export class WorldRenderer {
     state.workers
       .filter(worker => !worker.lost)
       .forEach(worker => this.drawWorker(context, state, worker, viewport));
+    state.refugees.forEach(refugee => this.drawRefugee(context, state, refugee, viewport));
+    state.archers
+      .filter(archer => !archer.lost)
+      .forEach(archer => this.drawArcher(context, state, archer, viewport));
     state.monsters.forEach(monster => this.drawMonster(context, state, monster, viewport));
     this.drawPlayer(context, state, viewport);
     this.drawOverlay(context, state, viewport);
@@ -101,6 +108,17 @@ export class WorldRenderer {
         const label = tile.mine?.workerId ? '采矿中' : tile.reserved ? '前往矿山' : '矿山';
         this.label(context, screen.x, screen.y - 24, label);
       }
+      if (tile.type === TileType.REFUGEE_FIRE) {
+        const refugee = tile.refugee ?? { available: false, cooldown: 0 };
+        const label = refugee.available
+          ? '流民火堆'
+          : refugee.cooldown > 0
+            ? `冷却 ${Math.ceil(refugee.cooldown)}s`
+            : '空火堆';
+        this.label(context, screen.x, screen.y - 24, label);
+      }
+      if (tile.type === TileType.WORKER_HUT) this.label(context, screen.x, screen.y - 24, '工人屋');
+      if (tile.type === TileType.ARCHER_CAMP) this.label(context, screen.x, screen.y - 24, '弓箭手营');
       if (tile.type === TileType.FOG) this.label(context, screen.x, screen.y - 24, '雾门');
       if (tile.type === TileType.GOAL) this.label(context, screen.x, screen.y - 24, '远方信标');
       if (hovered) this.label(context, screen.x, screen.y - 44, state.hover.label);
@@ -169,20 +187,28 @@ export class WorldRenderer {
 
     for (const worker of state.workers) {
       if (!worker.path || worker.pathIndex >= worker.path.length) continue;
+      this.drawPath(context, state, worker, viewport);
+    }
 
-      let point = this.toScreen(worker.x, worker.y, state, viewport);
-      context.beginPath();
-      context.moveTo(point.x, point.y);
-
-      for (let i = worker.pathIndex; i < worker.path.length; i += 1) {
-        point = this.toScreen(worker.path[i].x, worker.path[i].y, state, viewport);
-        context.lineTo(point.x, point.y);
-      }
-
-      context.stroke();
+    for (const refugee of state.refugees) {
+      if (!refugee.path || refugee.pathIndex >= refugee.path.length) continue;
+      this.drawPath(context, state, refugee, viewport);
     }
 
     context.restore();
+  }
+
+  drawPath(context, state, unit, viewport) {
+    let point = this.toScreen(unit.x, unit.y, state, viewport);
+    context.beginPath();
+    context.moveTo(point.x, point.y);
+
+    for (let i = unit.pathIndex; i < unit.path.length; i += 1) {
+      point = this.toScreen(unit.path[i].x, unit.path[i].y, state, viewport);
+      context.lineTo(point.x, point.y);
+    }
+
+    context.stroke();
   }
 
   drawWorker(context, state, worker, viewport) {
@@ -204,6 +230,30 @@ export class WorldRenderer {
       flee: '撤退'
     }[worker.state] ?? '工人';
     this.label(context, point.x, point.y - 34, labelText);
+    context.restore();
+  }
+
+  drawRefugee(context, state, refugee, viewport) {
+    const point = this.toScreen(refugee.x, refugee.y, state, viewport);
+    context.save();
+    context.fillStyle = '#f0d3aa';
+    context.beginPath();
+    context.arc(point.x, point.y - 14, 5, 0, Math.PI * 2);
+    context.fill();
+    context.fillRect(point.x - 4, point.y - 8, 8, 12);
+    this.label(context, point.x, point.y - 34, '流民返回');
+    context.restore();
+  }
+
+  drawArcher(context, state, archer, viewport) {
+    const point = this.toScreen(archer.x, archer.y, state, viewport);
+    context.save();
+    context.fillStyle = '#b8d7a4';
+    context.beginPath();
+    context.arc(point.x, point.y - 14, 6, 0, Math.PI * 2);
+    context.fill();
+    context.fillRect(point.x - 5, point.y - 8, 10, 13);
+    this.label(context, point.x, point.y - 34, '弓箭手');
     context.restore();
   }
 

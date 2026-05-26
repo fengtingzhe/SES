@@ -211,6 +211,7 @@ export class WorkerSystem {
     if (type === JobType.CAMP) {
       map.setTile(tx, ty, TileType.CAMP);
       const camp = this.campSystem.addCamp(state, tx, ty);
+      this.createCareerSitesNear(state, tx, ty);
       Object.assign(worker, {
         x: tx,
         y: ty,
@@ -347,5 +348,19 @@ export class WorkerSystem {
       }
     });
     return job;
+  }
+
+  createCareerSitesNear(state, x, y) {
+    const map = state.world.map;
+    const sites = [
+      { x: x + 1, y: y + 2, type: TileType.WORKER_HUT },
+      { x: x + 3, y: y + 2, type: TileType.ARCHER_CAMP }
+    ];
+
+    for (const site of sites) {
+      if (map.cell(site.x, site.y)?.type === TileType.GROUND) {
+        map.setTile(site.x, site.y, site.type);
+      }
+    }
   }
 }

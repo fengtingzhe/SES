@@ -557,3 +557,76 @@ v0.4 小修复 / 工人夜晚感知 / 工人逃跑 / 任务释放 / 工人 lost 
 - GPT_DEMO 新营地建成后会调用 `createMine()` 在营地附近生成矿山；v0.6 最小实现只保证出生点附近矿山，后续是否补齐新营地设施生成需随对应任务卡确认。
 - 采矿派工是否应消耗辉石仍是策划待确认项；v0.6 默认继承 GPT_DEMO 当前 0 成本表现。
 - GPT_DEMO 当前采矿工人在 `updateUnits()` 中不主动做威胁检测；v0.6 为满足任务卡“工人逃跑时释放矿山占用”，允许采矿工人感知黑影并撤退，后续可由策划确认是否保留。
+
+## v0.7-refactor 代码迁移记录
+
+### 迁移系统
+
+流民火堆 / 招募流民 / 流民返程 / 待转职人口池 / 工人屋 / 弓箭手营 / 工人转职 / 弓箭手转职
+
+### GPT_DEMO 来源
+
+- 文件：`GPT_DEMO/index.html`
+- 地块类型：`T.RF`、`T.HUT`、`T.AR`，位于约 141、144、145 行。
+- 通行规则：`pass()` 中允许 `T.RF`、`T.HUT`、`T.AR` 通行，位于约 224 - 225 行。
+- 状态变量：`pop`、`refs`、`archers`，位于约 180 行；`resetGame()` 初始化 `pop = []`、`refs = []`，位于约 332 - 333 行。
+- 地图生成：`makeMap()` 中沿主路径放置流民火堆，`startArea()` 和营地建成后调用 `spawnCareer()` 生成工人屋与弓箭手营，位于约 389 - 465 行和约 939 行。
+- 流民火堆刷新：`updateRefugeeFires(dt)`，位于约 505 - 515 行。
+- 互动识别：`infoAt()` 中流民火堆、工人屋、弓箭手营优先级，位于约 635 - 637 行。
+- 招募与转职：`recruit(it, c)`、`convert(kind)`，位于约 735 - 755 行。
+- 流民返程：`updateRefs(dt)`，位于约 973 - 991 行。
+- 渲染与 HUD：流民火堆、职业点、返程流民、待转职人口和弓箭手显示逻辑，位于约 1430 - 1600 行。
+
+### GPT_DEMO 原始行为
+
+- 地图中存在流民火堆，火堆可作为人口补给来源。
+- 玩家与可招募流民火堆互动时消耗 1 个辉石，生成返程流民。
+- 招募后流民火堆进入约 10 秒冷却，冷却结束后再次可招募。
+- 返程流民沿路径移动到最近家园；抵达后进入待转职人口池，而不是直接成为工人。
+- 工人屋用于把待转职人口转成工人，弓箭手营用于把待转职人口转成弓箭手。
+- 每次转职消耗 1 个辉石和 1 个待转职人口。
+- 弓箭手实体可以显示；完整战斗逻辑属于后续防御系统。
+
+### WEB_DEMO 迁移位置
+
+- `WEB_DEMO/src/game/world/TileMap.js`：新增 `REFUGEE_FIRE`、`WORKER_HUT`、`ARCHER_CAMP` 地块类型、通行规则和 `refugee` 地块状态。
+- `WEB_DEMO/src/game/world/MapGenerator.js`：生成流民火堆，并在起点家园附近生成工人屋和弓箭手营。
+- `WEB_DEMO/src/game/config/GameConfig.js`：新增人口相关配置，包括初始工人、流民火堆冷却、流民返程速度和转职成本。
+- `WEB_DEMO/src/game/state/createInitialState.js`：新增 `refugees`、`archers`、`population.unassigned` 和 `createArcher()`。
+- `WEB_DEMO/src/game/systems/PopulationSystem.js`：新增流民火堆冷却、招募流民、返程流民、抵达后进入人口池、转职为工人 / 弓箭手。
+- `WEB_DEMO/src/game/systems/InteractionSystem.js`：新增流民火堆、工人屋、弓箭手营互动识别和执行。
+- `WEB_DEMO/src/game/rules/interactionPriority.js`：新增招募、职业点转职和流民火堆冷却互动优先级。
+- `WEB_DEMO/src/game/systems/WorkerSystem.js`：新营地建成后生成工人屋与弓箭手营。
+- `WEB_DEMO/src/app/GameApp.js`：接入 `PopulationSystem` 更新。
+- `WEB_DEMO/src/presentation/renderers/WorldRenderer.js`：显示流民火堆、返程流民、工人屋、弓箭手营和弓箭手实体。
+- `WEB_DEMO/src/presentation/renderers/HudRenderer.js`：显示待转职人口、返程流民、弓箭手和流民火堆状态。
+- `WEB_DEMO/index.html`、`WEB_DEMO/package.json`：同步 v0.7 版本标识。
+
+### 保持一致的规则
+
+- 流民火堆是人口补给来源，互动招募成本为 1 个辉石。
+- 招募后生成返程流民实体，流民不会立刻变成工人。
+- 流民抵达家园后进入待转职人口池。
+- 待转职人口需要在职业点消耗辉石转职。
+- 工人屋转职为工人，弓箭手营转职为弓箭手。
+- 转职成本为 1 个辉石和 1 个待转职人口。
+- 流民火堆冷却约 10 秒后恢复可招募。
+- 弓箭手本轮只作为实体存在并显示，不具备射击战斗。
+
+### 有意重构的部分
+
+- GPT_DEMO 的 `pop` 在 WEB_DEMO 中表达为 `state.population.unassigned`，保留“待转职而非工人”的语义。
+- GPT_DEMO 的 `refs` 被迁移为 `state.refugees` 并由独立 `PopulationSystem` 更新。
+- GPT_DEMO 的火堆字段 `ref/refCd` 在 WEB_DEMO 中表达为 `tile.refugee.available/cooldown`。
+- GPT_DEMO 的 `spawnCareer()` 被拆到 `MapGenerator.placeCareerSites()` 和 `WorkerSystem.createCareerSitesNear()`，分别处理初始家园和新营地。
+- 职业转换通过 `createWorker()` / `createArcher()` 统一实体创建入口，避免把逻辑塞回单文件结构。
+
+### 有意重设计的部分
+
+无。本轮不引入已确认的玩法重设计。
+
+### 待确认问题
+
+- GPT_DEMO 中流民火堆是否无限刷新仍是策划待确认项；v0.7 暂按约 10 秒冷却后重新可招募继承。
+- 新营地职业点位置本轮按 GPT_DEMO 的固定偏移继承，后续若有正式营地布局需要策划确认。
+- 弓箭手战斗、弓箭手被黑影攻击、黑影攻击返程流民、流民夜晚减速和流民 lost 均按任务卡后置。

@@ -2,6 +2,7 @@ import { GameConfig } from '../config/GameConfig.js';
 import { clamp } from '../utils/grid.js';
 import { createRandom, randomInt } from '../utils/random.js';
 import { TileMap, TileType } from './TileMap.js';
+import { findPath } from './pathfinding.js';
 
 export class MapGenerator {
   constructor(config = GameConfig.map) {
@@ -18,6 +19,7 @@ export class MapGenerator {
     this.createRiverSkeleton(map, path, 45);
     this.createStartArea(map);
     this.placeWorkSites(map, path);
+    this.placeRefugeeFires(map, path);
     this.placeFogGates(map, path);
     this.placeStarterStones(map, path);
     map.setTile(this.config.goal.x, this.config.goal.y, TileType.GOAL);
@@ -86,6 +88,16 @@ export class MapGenerator {
     }
     map.setTile(start.x, start.y, TileType.VILLAGE);
     map.setTile(start.x + 2, start.y, TileType.MINE, { mine: { workerId: null } });
+    this.placeCareerSites(map, start.x, start.y);
+  }
+
+  placeCareerSites(map, x, y) {
+    if (map.cell(x + 1, y + 2)?.type === TileType.GROUND) {
+      map.setTile(x + 1, y + 2, TileType.WORKER_HUT);
+    }
+    if (map.cell(x + 3, y + 2)?.type === TileType.GROUND) {
+      map.setTile(x + 3, y + 2, TileType.ARCHER_CAMP);
+    }
   }
 
   placeWorkSites(map, path) {
@@ -115,18 +127,34 @@ export class MapGenerator {
     this.placeNearPath(map, path, 48, 5, TileType.FOG);
   }
 
-  placeNearPath(map, path, index, offsetY, type, extra = {}) {
+  placeRefugeeFires(map, path) {
+    this.placeNearPath(map, path, 16, 4, TileType.REFUGEE_FIRE, {
+      refugee: { available: true, cooldown: 0 }
+    }, true);
+    this.placeNearPath(map, path, 30, 4, TileType.REFUGEE_FIRE, {
+      refugee: { available: true, cooldown: 0 }
+    }, true);
+  }
+
+  placeNearPath(map, path, index, offsetY, type, extra = {}, requireStartPath = false) {
     const anchor = path[Math.min(index, path.length - 1)];
     const y = clamp(anchor.y + offsetY, 4, this.config.height - 5);
-    const spot = this.findNearestGround(map, anchor.x, y);
+    const spot = this.findNearestGround(
+      map,
+      anchor.x,
+      y,
+      requireStartPath ? this.config.start : null
+    );
     if (spot) map.setTile(spot.x, spot.y, type, extra);
   }
 
-  findNearestGround(map, x, y) {
-    for (let radius = 0; radius <= 6; radius += 1) {
+  findNearestGround(map, x, y, reachableFrom = null) {
+    const maxRadius = reachableFrom ? 12 : 6;
+    for (let radius = 0; radius <= maxRadius; radius += 1) {
       for (let yy = y - radius; yy <= y + radius; yy += 1) {
         for (let xx = x - radius; xx <= x + radius; xx += 1) {
           if (map.cell(xx, yy)?.type === TileType.GROUND) {
+            if (reachableFrom && !findPath(map, { x: xx, y: yy }, reachableFrom)) continue;
             return { x: xx, y: yy };
           }
         }

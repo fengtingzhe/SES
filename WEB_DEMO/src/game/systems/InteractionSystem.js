@@ -3,9 +3,10 @@ import { TileType } from '../world/TileMap.js';
 import { InteractionAction, InteractionPriority } from '../rules/interactionPriority.js';
 
 export class InteractionSystem {
-  constructor(resourceSystem, workerSystem, showMessage) {
+  constructor(resourceSystem, workerSystem, populationSystem, showMessage) {
     this.resourceSystem = resourceSystem;
     this.workerSystem = workerSystem;
+    this.populationSystem = populationSystem;
     this.showMessage = showMessage;
   }
 
@@ -19,6 +20,23 @@ export class InteractionSystem {
 
     if (tile.type === TileType.STONE && tile.placed) {
       return this.createInfo(state, x, y, InteractionAction.PICK_PLACED_STONE, `拾回辉石 +${tile.value || 1}`);
+    }
+
+    if (tile.type === TileType.REFUGEE_FIRE) {
+      const refugee = tile.refugee ?? { available: false, cooldown: 0 };
+      if (refugee.available) {
+        return this.createInfo(state, x, y, InteractionAction.RECRUIT_REFUGEE, '招募流民 1');
+      }
+      const cooldown = Math.ceil(refugee.cooldown || 0);
+      return this.createInfo(state, x, y, InteractionAction.REFUGEE_COOLDOWN, cooldown > 0 ? `冷却 ${cooldown}s` : '空火堆');
+    }
+
+    if (tile.type === TileType.WORKER_HUT) {
+      return this.createInfo(state, x, y, InteractionAction.CONVERT_WORKER, '流民转工人 1');
+    }
+
+    if (tile.type === TileType.ARCHER_CAMP) {
+      return this.createInfo(state, x, y, InteractionAction.CONVERT_ARCHER, '流民转弓箭手 1');
     }
 
     if (tile.type === TileType.MINE) {
@@ -105,6 +123,26 @@ export class InteractionSystem {
 
     if (target.action === InteractionAction.PICK_PLACED_STONE) {
       this.resourceSystem.pickPlacedStone(state, target.x, target.y);
+      return;
+    }
+
+    if (target.action === InteractionAction.RECRUIT_REFUGEE) {
+      this.populationSystem.recruit(state, target);
+      return;
+    }
+
+    if (target.action === InteractionAction.REFUGEE_COOLDOWN) {
+      this.showMessage(target.label);
+      return;
+    }
+
+    if (target.action === InteractionAction.CONVERT_WORKER) {
+      this.populationSystem.convert(state, 'worker', target);
+      return;
+    }
+
+    if (target.action === InteractionAction.CONVERT_ARCHER) {
+      this.populationSystem.convert(state, 'archer', target);
       return;
     }
 

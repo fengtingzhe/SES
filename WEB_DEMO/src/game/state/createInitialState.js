@@ -13,6 +13,9 @@ export function createInitialState() {
     world,
     homes: [startHome],
     monsters: [],
+    refugees: [],
+    archers: [],
+    nextEntityId: 3,
     monsterSpawn: {
       spawnedThisNight: 0,
       cooldown: 0,
@@ -39,7 +42,8 @@ export function createInitialState() {
       stone: GameConfig.resource.initialStone
     },
     population: {
-      initialWorkers: GameConfig.population.initialWorkers
+      initialWorkers: GameConfig.population.initialWorkers,
+      unassigned: []
     },
     camera: {
       x: 0,
@@ -47,13 +51,13 @@ export function createInitialState() {
     },
     hover: null,
     message: {
-      text: 'v0.6-refactor：临时辉石拾回与矿山采矿迁移中。',
+      text: 'v0.7-refactor：流民、人口池与职业转换迁移中。',
       ttl: GameConfig.messageSeconds
     }
   };
 }
 
-function createWorker(id, x, y, homeId) {
+export function createWorker(id, x, y, homeId) {
   return {
     id,
     x,
@@ -68,5 +72,16 @@ function createWorker(id, x, y, homeId) {
     lost: false,
     flee: false,
     interruptedJob: null
+  };
+}
+
+export function createArcher(id, x, y, homeId) {
+  return {
+    id,
+    x,
+    y,
+    homeId,
+    state: 'idle',
+    lost: false
   };
 }

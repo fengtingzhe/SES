@@ -6,6 +6,7 @@ import { InputManager } from '../game/systems/InputManager.js';
 import { InteractionSystem } from '../game/systems/InteractionSystem.js';
 import { MonsterSystem } from '../game/systems/MonsterSystem.js';
 import { PlayerSystem } from '../game/systems/PlayerSystem.js';
+import { PopulationSystem } from '../game/systems/PopulationSystem.js';
 import { ResourceSystem } from '../game/systems/ResourceSystem.js';
 import { VisionSystem } from '../game/systems/VisionSystem.js';
 import { WorkerSystem } from '../game/systems/WorkerSystem.js';
@@ -46,13 +47,19 @@ export class GameApp {
     this.dayNightSystem = new DayNightSystem();
     this.resourceSystem = new ResourceSystem(this.showMessage);
     this.workerSystem = new WorkerSystem(this.campSystem, this.resourceSystem, this.showMessage);
+    this.populationSystem = new PopulationSystem(this.campSystem, this.showMessage);
     this.monsterSystem = new MonsterSystem(
       this.campSystem,
       this.dayNightSystem,
       this.workerSystem,
       this.showMessage
     );
-    this.interactionSystem = new InteractionSystem(this.resourceSystem, this.workerSystem, this.showMessage);
+    this.interactionSystem = new InteractionSystem(
+      this.resourceSystem,
+      this.workerSystem,
+      this.populationSystem,
+      this.showMessage
+    );
 
     this.canvasRenderer.attach();
     this.inputManager.attach();
@@ -91,6 +98,7 @@ export class GameApp {
       this.playerSystem.update(this.state, dt);
       this.resourceSystem.update(this.state, dt);
       this.workerSystem.update(this.state, dt);
+      this.populationSystem.update(this.state, dt);
       this.monsterSystem.update(this.state, dt);
     }
 

@@ -1,5 +1,6 @@
 import { directionLabel } from '../../game/utils/grid.js';
 import { GameConfig } from '../../game/config/GameConfig.js';
+import { TileType } from '../../game/world/TileMap.js';
 
 export class HudRenderer {
   constructor(hudElement, toastElement) {
@@ -16,6 +17,10 @@ export class HudRenderer {
     const fleeingWorkers = state.workers.filter(worker => !worker.lost && worker.flee).length;
     const miningWorkers = state.workers.filter(worker => !worker.lost && worker.state === 'mining').length;
     const lostWorkers = state.workers.filter(worker => worker.lost).length;
+    const returningRefugees = state.refugees.filter(refugee => !refugee.done).length;
+    const unassignedPopulation = state.population.unassigned.length;
+    const archers = state.archers.filter(archer => !archer.lost).length;
+    const refugeeFires = this.countRefugeeFires(state);
     const busyWorkers = totalWorkers - idleWorkers;
     const phaseText = state.time.phase === 'night'
       ? '夜晚'
@@ -33,6 +38,10 @@ export class HudRenderer {
         <span>朝向：<b>${facing}</b></span>
         <span>工人：<b>${idleWorkers}/${totalWorkers}</b> 空闲</span>
         <span>采矿：<b>${miningWorkers}</b></span>
+        <span>待转职：<b>${unassignedPopulation}</b></span>
+        <span>返程流民：<b>${returningRefugees}</b></span>
+        <span>弓箭手：<b>${archers}</b></span>
+        <span>流民火堆：<b>${refugeeFires.available}</b> 可招募 / <b>${refugeeFires.cooling}</b> 冷却</span>
         <span>撤退：<b>${fleeingWorkers}</b></span>
         <span>失踪：<b>${lostWorkers}</b></span>
         <span>任务中：<b>${busyWorkers}</b></span>
@@ -48,5 +57,21 @@ export class HudRenderer {
     } else {
       this.toastElement.classList.remove('is-visible');
     }
+  }
+
+  countRefugeeFires(state) {
+    let available = 0;
+    let cooling = 0;
+
+    state.world.map.forEach(tile => {
+      if (tile.type !== TileType.REFUGEE_FIRE) return;
+      if (tile.refugee?.available) {
+        available += 1;
+        return;
+      }
+      if ((tile.refugee?.cooldown ?? 0) > 0) cooling += 1;
+    });
+
+    return { available, cooling };
   }
 }
