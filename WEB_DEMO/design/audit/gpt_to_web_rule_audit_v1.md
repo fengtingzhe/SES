@@ -737,15 +737,14 @@ v0.4 小修复 / 工人夜晚感知 / 工人逃跑 / 任务释放 / 工人 lost 
 
 ### 迁移系统
 
-颠倒森林 / 狐狸成亲事件 / 终点灯塔 / 看海目标 / 基础胜利提示
-
-小地图 / 辅助信息本轮后置，未纳入核心迁移范围。
+颠倒森林 / 狐狸成亲事件 / 终点灯塔 / 看海目标 / 基础胜利提示 / 小地图后置记录
 
 ### GPT_DEMO 来源
 
 - 文件：`GPT_DEMO/index.html`
-- 地块类型：`T.INV`、`T.FOX`、`T.GO`，位于约 143 - 146 行和约 146 - 147 行。
-- 全局状态：`foxes`、`foxEvent`、玩家 `pl.ctrlInv`，位于约 180 - 181 行和约 329 行。
+- 相关常量：地块类型 `T.INV`、`T.FOX`、`T.GO`，位于约 143 - 146 行和约 146 - 147 行。
+- 相关状态：`foxes`、`foxEvent`、玩家 `pl.ctrlInv`，位于约 180 - 181 行和约 329 行。
+- 相关函数：`paintInvert()`、`inInvert()`、`move()`、`infoAt()`、`interact()`、`startFox()`、`updateFox()`、`endFox()`、`drawHud()`。
 - 通行规则：`pass()` 中允许 `T.INV`、`T.FOX`、`T.GO` 通行，位于约 224 - 225 行。
 - 颠倒森林判定：`inInvert(o)`，位于约 281 - 285 行。
 - 地图生成：`paintInvert(cx, cy, r)`、`place(path, 27, -5, ...)`、终点 `cell(GOAL.x, GOAL.y).t = T.GO`，位于约 390 - 426 行和约 407 行。
