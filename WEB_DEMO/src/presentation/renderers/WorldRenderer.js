@@ -1,5 +1,5 @@
 import { GameConfig } from '../../game/config/GameConfig.js';
-import { directionLabel } from '../../game/utils/grid.js';
+import { directionLabel, distance } from '../../game/utils/grid.js';
 import { TileType } from '../../game/world/TileMap.js';
 
 const TILE_COLORS = {
@@ -54,6 +54,7 @@ export class WorldRenderer {
     state.monsters.forEach(monster => this.drawMonster(context, state, monster, viewport));
     this.drawPlayer(context, state, viewport);
     this.drawOverlay(context, state, viewport);
+    if (state.ui?.showMiniMap) this.drawMiniMap(context, state, viewport);
   }
 
   drawTiles(context, state, viewport) {
@@ -97,6 +98,9 @@ export class WorldRenderer {
     }
 
     if (tile.visible) {
+      if (tile.type === TileType.STONE && distance(state.player, { x, y }) <= 2.2) {
+        this.label(context, screen.x, screen.y - 24, tile.placed ? '临时辉石：Space 拾回' : '辉石：靠近拾取');
+      }
       if (tile.type === TileType.FOREST && tile.job === 'chop') {
         this.label(context, screen.x, screen.y - 24, tile.reserved ? '砍树中' : '可砍树');
       }
@@ -137,7 +141,7 @@ export class WorldRenderer {
       if (tile.type === TileType.WALL) {
         this.label(context, screen.x, screen.y - 24, `围墙 ${tile.hp || 0}/${GameConfig.wall.maxHp}`);
       }
-      if (tile.type === TileType.FOG) this.label(context, screen.x, screen.y - 24, '雾门');
+      if (tile.type === TileType.FOG) this.label(context, screen.x, screen.y - 24, '雾门：夜晚黑影来源');
       if (tile.type === TileType.GOAL) this.label(context, screen.x, screen.y - 24, '远方灯塔');
       if (hovered) this.label(context, screen.x, screen.y - 44, state.hover.label);
     }
@@ -367,6 +371,87 @@ export class WorldRenderer {
       context.font = '16px system-ui, sans-serif';
       context.fillText('阶段目标完成，按 R 重新开始', viewport.width / 2, viewport.height / 2 + 36);
     }
+  }
+
+  drawMiniMap(context, state, viewport) {
+    const map = state.world.map;
+    const size = Math.min(GameConfig.camera.miniMapSize, Math.max(104, viewport.width * 0.22));
+    const x0 = viewport.width - size - 18;
+    const y0 = 18;
+    const cellWidth = size / map.width;
+    const cellHeight = size / map.height;
+
+    context.save();
+    context.fillStyle = 'rgba(7,16,17,.68)';
+    context.strokeStyle = 'rgba(255,241,184,.24)';
+    context.lineWidth = 1;
+    this.roundRect(context, x0 - 8, y0 - 8, size + 16, size + 34, 10);
+    context.fill();
+    context.stroke();
+
+    context.font = '11px system-ui, sans-serif';
+    context.fillStyle = '#dbe7df';
+    context.textAlign = 'left';
+    context.fillText('小地图 F3/M', x0, y0 + size + 18);
+
+    map.forEach((tile, x, y) => {
+      if (!tile.discovered) return;
+      context.fillStyle = this.miniMapColor(tile);
+      context.fillRect(x0 + x * cellWidth, y0 + y * cellHeight, Math.max(1, cellWidth), Math.max(1, cellHeight));
+    });
+
+    this.drawMiniMarker(context, x0, y0, cellWidth, cellHeight, GameConfig.map.goal, '#fff1b8', 3);
+    for (const home of state.homes) {
+      this.drawMiniMarker(context, x0, y0, cellWidth, cellHeight, home, '#f2a65a', 3);
+    }
+    for (const monster of state.monsters) {
+      this.drawMiniMarker(context, x0, y0, cellWidth, cellHeight, monster, '#111111', 2.5);
+    }
+    this.drawMiniMarker(context, x0, y0, cellWidth, cellHeight, state.player, '#ffffff', 3.5);
+    context.restore();
+  }
+
+  miniMapColor(tile) {
+    const colors = {
+      [TileType.WATER]: '#315b76',
+      [TileType.VILLAGE]: '#f2a65a',
+      [TileType.CAMP]: '#e59e54',
+      [TileType.GOAL]: '#fff1b8',
+      [TileType.FOG]: '#7d4fa0',
+      [TileType.MINE]: '#8b9ca6',
+      [TileType.REFUGEE_FIRE]: '#d08a48',
+      [TileType.INVERTED_FOREST]: '#8e62aa',
+      [TileType.FOX_WEDDING]: '#e49b55',
+      [TileType.WORKER_HUT]: '#c2a36a',
+      [TileType.ARCHER_CAMP]: '#9ab57d',
+      [TileType.STONE]: '#b6eee4',
+      [TileType.WALL_BASE]: '#9a8a60',
+      [TileType.WALL]: '#d0d0c8'
+    };
+    return colors[tile.type] ?? '#496d54';
+  }
+
+  drawMiniMarker(context, x0, y0, cellWidth, cellHeight, point, color, radius) {
+    context.fillStyle = color;
+    context.beginPath();
+    context.arc(x0 + point.x * cellWidth, y0 + point.y * cellHeight, radius, 0, Math.PI * 2);
+    context.fill();
+    context.strokeStyle = 'rgba(7,16,17,.75)';
+    context.stroke();
+  }
+
+  roundRect(context, x, y, width, height, radius) {
+    context.beginPath();
+    context.moveTo(x + radius, y);
+    context.lineTo(x + width - radius, y);
+    context.quadraticCurveTo(x + width, y, x + width, y + radius);
+    context.lineTo(x + width, y + height - radius);
+    context.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    context.lineTo(x + radius, y + height);
+    context.quadraticCurveTo(x, y + height, x, y + height - radius);
+    context.lineTo(x, y + radius);
+    context.quadraticCurveTo(x, y, x + radius, y);
+    context.closePath();
   }
 
   label(context, x, y, text) {

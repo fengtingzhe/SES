@@ -22,6 +22,7 @@ export class GameApp {
     this.animationFrame = null;
     this.showMessage = this.showMessage.bind(this);
     this.reset = this.reset.bind(this);
+    this.toggleMiniMap = this.toggleMiniMap.bind(this);
     this.loop = this.loop.bind(this);
   }
 
@@ -41,7 +42,8 @@ export class GameApp {
     );
     this.inputManager = new InputManager({
       onInteract: () => this.interactionSystem.interact(this.state),
-      onReset: this.reset
+      onReset: this.reset,
+      onToggleMiniMap: this.toggleMiniMap
     });
     this.playerSystem = new PlayerSystem(this.inputManager);
     this.visionSystem = new VisionSystem();
@@ -85,6 +87,12 @@ export class GameApp {
       text,
       ttl: GameConfig.messageSeconds
     };
+  }
+
+  toggleMiniMap() {
+    if (!this.state?.ui) return;
+    this.state.ui.showMiniMap = !this.state.ui.showMiniMap;
+    this.showMessage(this.state.ui.showMiniMap ? '显示小地图。' : '隐藏小地图。');
   }
 
   loop(now) {

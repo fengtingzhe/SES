@@ -25,7 +25,9 @@ export class HudRenderer {
     const refugeeFires = this.countRefugeeFires(state);
     const walls = this.countWalls(state);
     const foxWedding = this.foxWeddingStatus(state);
+    const assistHint = this.assistHint(state);
     const busyWorkers = totalWorkers - idleWorkers;
+    const statusText = this.statusText(state.status);
     const phaseText = state.time.phase === 'night'
       ? '夜晚'
       : state.time.phase === 'dusk'
@@ -37,6 +39,7 @@ export class HudRenderer {
       <div class="hud-row">
         <span>第 <b>${state.time.day}</b> 天</span>
         <span>阶段：<b>${phaseText}</b></span>
+        <span>状态：<b>${statusText}</b></span>
         <span>辉石：<b>${state.resources.stone}</b></span>
         <span>位置：<b>${position}</b></span>
         <span>朝向：<b>${facing}</b></span>
@@ -54,9 +57,11 @@ export class HudRenderer {
         <span>家园：<b>${state.homes.length}</b></span>
         <span>黑影：<b>${state.monsters.length}</b>（本夜 <b>${state.monsterSpawn.spawnedThisNight}/${GameConfig.monster.perNight}</b>）</span>
         <span>狐狸婚仪：<b>${foxWedding}</b></span>
-        <span>旅程：<b>${state.status === 'completed' ? '已看见海' : state.status === 'failed' ? '中断' : '进行中'}</b></span>
+        <span>小地图：<b>${state.ui?.showMiniMap ? '显示' : '隐藏'}</b></span>
       </div>
       <div class="hint">当前提示：<b>${hint}</b></div>
+      <div class="hint">辅助信息：<b>${assistHint}</b></div>
+      <div class="hint">快捷键：<b>Space 互动 / 放置辉石 · R 重置 · F3 或 M 小地图</b></div>
     `;
 
     if (state.message.ttl > 0 && state.message.text) {
@@ -94,6 +99,52 @@ export class HudRenderer {
     });
 
     return { total, damaged };
+  }
+
+  statusText(status) {
+    if (status === 'completed') return '已看见海';
+    if (status === 'failed') return '旅程中断';
+    return '进行中';
+  }
+
+  assistHint(state) {
+    if (state.status === 'completed') return '阶段目标完成，按 R 可重新开始。';
+    if (state.status === 'failed') return '辉石耗尽或旅程中断，按 R 重新开始。';
+
+    const event = state.events.foxWedding;
+    if (event.active) {
+      const moving = event.timer % GameConfig.events.foxWedding.moveCycleSeconds < GameConfig.events.foxWedding.moveSeconds;
+      return moving ? '狐狸队伍移动中，保持跟随。' : '狐狸队伍停下了，停住不要乱动。';
+    }
+
+    if (state.player.controlInverted) return '颠倒森林中，玩家移动输入方向反转。';
+
+    const nearbyStone = this.nearestTile(state, tile => tile.type === TileType.STONE && !tile.placed, 1.6);
+    if (nearbyStone) return '靠近自然辉石会自动拾取。';
+
+    const nearbyPlacedStone = this.nearestTile(state, tile => tile.type === TileType.STONE && tile.placed, 1.7);
+    if (nearbyPlacedStone) return '临时辉石不会自动拾回，需要 Space 主动拾回。';
+
+    const nearbyFog = this.nearestTile(state, tile => tile.type === TileType.FOG, 3.2);
+    if (nearbyFog) return '雾门是夜晚黑影来源，靠近营地时需提前防守。';
+
+    const nearbyGoal = this.nearestTile(state, tile => tile.type === TileType.GOAL, 2.4);
+    if (nearbyGoal) return '远方灯塔是看海目标，靠近后按 Space 完成阶段目标。';
+
+    if (state.time.phase === 'night') return '夜晚黑影会从雾门出现，辉石可诱导黑影。';
+    return '探索、收集辉石、派工建设，并向远方灯塔推进。';
+  }
+
+  nearestTile(state, predicate, maxDistance) {
+    let best = null;
+    state.world.map.forEach((tile, x, y) => {
+      if (!tile.discovered || !predicate(tile)) return;
+      const d = Math.hypot(state.player.x - x, state.player.y - y);
+      if (d <= maxDistance && (!best || d < best.distance)) {
+        best = { tile, x, y, distance: d };
+      }
+    });
+    return best;
   }
 
   foxWeddingStatus(state) {

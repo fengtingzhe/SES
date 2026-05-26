@@ -1,5 +1,66 @@
 # GPT_DEMO -> WEB_DEMO 规则审计 v1
 
+## v1.0-refactor 代码迁移记录
+
+### 迁移系统
+
+小地图 / 辅助信息 / HUD 完整化 / 可见标签提示 / 规则一致性回归文档。
+
+### GPT_DEMO 来源
+
+- 文件：`GPT_DEMO/index.html`
+- 小地图开关状态：`showMiniMap = true`。
+- 小地图绘制：`mini()` 只绘制 `seen` 地块，并用颜色区分水域、营地、颠倒森林、狐狸婚仪、职业点、雾门、辉石、围墙等对象。
+- 小地图调用：主绘制流程中 `if (showMiniMap) mini()`。
+- 输入开关：`keydown` 中 F3 切换小地图显示。
+- HUD 来源：`drawHud()` 显示版本、天数 / 阶段、辉石、安全状态、工人、弓箭手、人口、流民、黑影、狐狸事件、当前互动和 F2 / F3 辅助提示。
+- 标签来源：`drawTile()` 中对矿山、流民火堆、工人屋、弓箭手营、颠倒森林、狐狸婚仪、雾门、桥、营地、旧火塘、部落、终点、围墙等可见对象绘制文字提示。
+
+### GPT_DEMO 原始行为
+
+- 小地图默认开启，玩家可通过 F3 切换显示。
+- 小地图只展示玩家已经探索过的区域，不直接暴露未探索地块完整信息。
+- 小地图用简化色块和少量标记帮助玩家定位玩家、营地、终点和危险来源。
+- HUD 是完整体验辅助层，帮助玩家同时判断资源、人口、单位、夜晚压力、特殊事件和当前互动。
+- 可见对象会出现短标签，让玩家知道附近对象用途和当前状态。
+
+### WEB_DEMO 迁移位置
+
+- `WEB_DEMO/src/game/config/GameConfig.js`：版本更新为 v1.0，并新增小地图尺寸配置。
+- `WEB_DEMO/src/game/state/createInitialState.js`：新增 `state.ui.showMiniMap`，默认显示小地图。
+- `WEB_DEMO/src/game/systems/InputManager.js`：新增 F3 / M 切换小地图输入。
+- `WEB_DEMO/src/app/GameApp.js`：新增 `toggleMiniMap()`，负责切换 UI 状态并显示提示。
+- `WEB_DEMO/src/presentation/renderers/WorldRenderer.js`：新增小地图绘制、关键标记、已探索地块过滤，以及辉石 / 雾门等标签提示补充。
+- `WEB_DEMO/src/presentation/renderers/HudRenderer.js`：补充状态、小地图开关、辅助信息、快捷键提示和完整 HUD 状态。
+- `WEB_DEMO/docs/changelog.md`、`WEB_DEMO/docs/acceptance_tests.md`、`WEB_DEMO/docs/known_issues.md`：同步 v1.0 体验回归记录、验收清单和问题分类。
+
+### 保持一致的规则
+
+- 小地图不显示未探索地块的完整信息。
+- 小地图作为辅助定位工具，不改变探索、视野、交互、战斗或资源规则。
+- HUD 必须持续展示对完整旅程有判断价值的关键状态。
+- 自然辉石保持靠近自动拾取；临时辉石保持不能自动拾回但可 Space 主动拾回。
+- 雾门、黑影、工人、矿山、流民、围墙、弓箭手、颠倒森林、狐狸婚仪和终点灯塔的既有规则不因本轮信息整理改变。
+
+### 有意重构的部分
+
+- GPT_DEMO 的全局 `showMiniMap` 在 WEB_DEMO 中收敛为 `state.ui.showMiniMap`。
+- GPT_DEMO 的 `mini()` 被拆入 `WorldRenderer.drawMiniMap()`，继续遵守只显示已探索地块的体验约束。
+- GPT_DEMO 的 HUD 文案由 canvas 绘制迁移为 DOM HUD 渲染，便于展示更完整的状态行和辅助提示。
+- 在保留 F3 的基础上补充 M 作为小地图切换键，属于输入层辅助重构，不改变核心玩法。
+
+### 有意重设计的部分
+
+无。本轮不改变玩法规则，不接入正式剧情演出、完整结算、正式资源、存档系统或 CSV / JSON 配置读取。
+
+### 待确认问题
+
+- F3 / M 小地图和辅助信息是否作为正式功能保留，还是后续改为可配置辅助开关。
+- 小地图是否需要正式图例、缩放、更多目标标记或标签开关。
+- 围墙是否继续保持可通行地块。
+- 黑影攻击弓箭手 / 弓箭手 lost 是否正式保留。
+- 狐狸婚仪和终点看海是否在后续版本扩展为正式剧情演出与完整结算。
+
 状态：初始审计完成
 来源：`GPT_DEMO/README.md`、`GPT_DEMO/index.html`、`WEB_DEMO/README.md`、`WEB_DEMO/design/production/web_demo_refactor_policy.md`
 审计目标：确认 WEB_DEMO 后续重构应继承的 GPT_DEMO 玩法规则，并定义下一阶段最小迁移范围。

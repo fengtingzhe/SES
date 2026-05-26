@@ -1,5 +1,5 @@
 export const GameConfig = {
-  version: 'WEB_DEMO v0.9-refactor',
+  version: 'WEB_DEMO v1.0-refactor',
 
   map: {
     width: 74,
@@ -102,7 +102,8 @@ export const GameConfig = {
   camera: {
     tileSize: 28,
     zoom: 1.15,
-    follow: 0.08
+    follow: 0.08,
+    miniMapSize: 140
   },
 
   messageSeconds: 2.2

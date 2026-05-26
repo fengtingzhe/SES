@@ -61,9 +61,12 @@ export function createInitialState() {
       x: 0,
       y: 0
     },
+    ui: {
+      showMiniMap: true
+    },
     hover: null,
     message: {
-      text: 'v0.9-refactor：特殊事件与终点体验迁移中。',
+      text: 'v1.0-refactor：体验回归与辅助信息整理中。',
       ttl: GameConfig.messageSeconds
     }
   };
