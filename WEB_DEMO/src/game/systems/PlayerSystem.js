@@ -9,14 +9,13 @@ export class PlayerSystem {
 
   update(state, dt) {
     const raw = this.inputManager.getMovementVector();
-    const inverted = this.isInverted(state);
-    state.player.controlInverted = inverted;
+    this.updateInvertedControlState(state, dt);
 
     if (!raw.x && !raw.y) return false;
 
     this.updateFacing(state.player, raw);
 
-    const moveInput = inverted ? { x: -raw.x, y: -raw.y } : raw;
+    const moveInput = state.player.controlInverted ? { x: -raw.x, y: -raw.y } : raw;
     const move = normalizeVector(moveInput.x, moveInput.y);
     const nextX = state.player.x + move.x * GameConfig.player.speed * dt;
     const nextY = state.player.y + move.y * GameConfig.player.speed * dt;
@@ -33,8 +32,26 @@ export class PlayerSystem {
       moved = true;
     }
 
-    state.player.controlInverted = this.isInverted(state);
     return moved;
+  }
+
+  updateInvertedControlState(state, dt) {
+    if (this.isInverted(state)) {
+      state.player.controlInverted = true;
+      state.player.invertedExitTimer = 0;
+      return;
+    }
+
+    if (!state.player.controlInverted) {
+      state.player.invertedExitTimer = 0;
+      return;
+    }
+
+    state.player.invertedExitTimer = (state.player.invertedExitTimer ?? 0) + dt;
+    if (state.player.invertedExitTimer >= GameConfig.player.invertedExitGraceSeconds) {
+      state.player.controlInverted = false;
+      state.player.invertedExitTimer = 0;
+    }
   }
 
   isInverted(state) {

@@ -1,5 +1,5 @@
 export const GameConfig = {
-  version: 'WEB_DEMO v1.0-refactor',
+  version: 'WEB_DEMO v1.0-fix-1',
 
   map: {
     width: 74,
@@ -11,7 +11,8 @@ export const GameConfig = {
 
   player: {
     speed: 4.2,
-    initialFacing: { x: 1, y: 0 }
+    initialFacing: { x: 1, y: 0 },
+    invertedExitGraceSeconds: 0.3
   },
 
   resource: {
@@ -32,7 +33,8 @@ export const GameConfig = {
   worker: {
     speed: 2.25,
     workDuration: 4,
-    threatRange: 3
+    threatRange: 3,
+    resumeThreatRange: 4
   },
 
   mine: {

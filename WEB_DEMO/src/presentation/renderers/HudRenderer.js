@@ -15,6 +15,7 @@ export class HudRenderer {
     const totalWorkers = state.workers.filter(worker => !worker.lost).length;
     const idleWorkers = state.workers.filter(worker => !worker.lost && worker.state === 'idle').length;
     const fleeingWorkers = state.workers.filter(worker => !worker.lost && worker.flee).length;
+    const waitingResumeWorkers = state.workers.filter(worker => !worker.lost && worker.state === 'waitingResume').length;
     const miningWorkers = state.workers.filter(worker => !worker.lost && worker.state === 'mining').length;
     const lostWorkers = state.workers.filter(worker => worker.lost).length;
     const returningRefugees = state.refugees.filter(refugee => !refugee.done).length;
@@ -52,6 +53,7 @@ export class HudRenderer {
         <span>围墙：<b>${walls.total}</b>（受损 <b>${walls.damaged}</b>）</span>
         <span>流民火堆：<b>${refugeeFires.available}</b> 可招募 / <b>${refugeeFires.cooling}</b> 冷却</span>
         <span>撤退：<b>${fleeingWorkers}</b></span>
+        <span>待复工：<b>${waitingResumeWorkers}</b></span>
         <span>失踪：<b>${lostWorkers}</b></span>
         <span>任务中：<b>${busyWorkers}</b></span>
         <span>家园：<b>${state.homes.length}</b></span>
@@ -118,6 +120,9 @@ export class HudRenderer {
     }
 
     if (state.player.controlInverted) return '颠倒森林中，玩家移动输入方向反转。';
+
+    const waitingResumeWorkers = state.workers.filter(worker => !worker.lost && worker.state === 'waitingResume').length;
+    if (waitingResumeWorkers > 0) return '采矿工人正等待原矿山附近安全后自动复工。';
 
     const nearbyStone = this.nearestTile(state, tile => tile.type === TileType.STONE && !tile.placed, 1.6);
     if (nearbyStone) return '靠近自然辉石会自动拾取。';

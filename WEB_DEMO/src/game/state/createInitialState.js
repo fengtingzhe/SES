@@ -48,7 +48,8 @@ export function createInitialState() {
       y: GameConfig.map.start.y,
       facing: { ...GameConfig.player.initialFacing },
       invulnerable: 0,
-      controlInverted: false
+      controlInverted: false,
+      invertedExitTimer: 0
     },
     resources: {
       stone: GameConfig.resource.initialStone
@@ -66,7 +67,7 @@ export function createInitialState() {
     },
     hover: null,
     message: {
-      text: 'v1.0-refactor：体验回归与辅助信息整理中。',
+      text: 'v1.0-fix-1：采矿复工与颠倒森林迟滞修复中。',
       ttl: GameConfig.messageSeconds
     }
   };

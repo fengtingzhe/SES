@@ -1,5 +1,48 @@
 # GPT_DEMO -> WEB_DEMO 规则审计 v1
 
+## v1.0-fix-1 修复记录
+
+### 修复问题
+
+- 采矿工人遇到黑影撤退后不会自动返回原矿山。
+- 颠倒森林边界输入反转频繁切换导致卡顿 / 抖动。
+
+### 修改位置
+
+- `WEB_DEMO/src/game/systems/WorkerSystem.js`
+- `WEB_DEMO/src/game/systems/PlayerSystem.js`
+- `WEB_DEMO/src/game/config/GameConfig.js`
+- `WEB_DEMO/src/game/state/createInitialState.js`
+- `WEB_DEMO/src/presentation/renderers/HudRenderer.js`
+- `WEB_DEMO/docs/changelog.md`
+- `WEB_DEMO/docs/acceptance_tests.md`
+- `WEB_DEMO/docs/known_issues.md`
+- `WEB_DEMO/design/audit/gpt_to_web_rule_audit_v1.md`
+
+### 保持一致的规则
+
+- 工人夜晚遇到黑影仍会撤退。
+- 采矿仍然是持续产出任务，约 30 秒产出 1 个辉石。
+- 采矿恢复不额外扣除辉石。
+- 采矿恢复只在原矿山仍存在、未被其他工人占用 / reserved、路径可达且矿山附近安全时发生。
+- 颠倒森林仍只影响玩家移动输入，不影响工人、黑影、流民或弓箭手 AI。
+
+### 有意重构
+
+- 采矿中断任务保留为 `interruptedJob`，工人回家后进入 `waitingResume` 状态，等待原矿山安全后自动复工。
+- 新增 `worker.resumeThreatRange`，用于判断原矿山附近是否安全。
+- 颠倒森林输入反转从每帧实时 tile 覆盖，调整为 `updateInvertedControlState(state, dt)` 维护的稳定状态。
+- 新增 `player.invertedExitGraceSeconds` 和 `player.invertedExitTimer`，用于离开颠倒森林后的短暂迟滞。
+
+### 是否修改玩家朝向
+
+未修改。玩家朝向仍由原始输入 `raw` 更新；本轮只修复边界反转卡顿，不改变 Space 面向交互体验。
+
+### 待确认问题
+
+- 是否需要把自动恢复扩展到砍树、修桥、建营地、建墙等其他工人任务。
+- 颠倒森林中玩家朝向是否应继续跟随原始输入，还是改为跟随实际移动方向。
+
 ## v1.0-refactor 代码迁移记录
 
 ### 迁移系统

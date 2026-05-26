@@ -16,6 +16,11 @@ export class WorkerSystem {
     for (const worker of state.workers) {
       if (worker.lost) continue;
 
+      if (worker.state === 'waitingResume') {
+        this.resumeInterruptedJob(state, worker);
+        continue;
+      }
+
       this.checkThreat(state, worker);
 
       if (worker.state === 'mining') {
@@ -188,6 +193,65 @@ export class WorkerSystem {
     }
   }
 
+  resumeInterruptedJob(state, worker) {
+    const job = worker.interruptedJob;
+    if (job?.type !== JobType.MINE) return false;
+    if (worker.lost || worker.flee) return false;
+    if (worker.state !== 'waitingResume' && worker.state !== 'idle') return false;
+
+    const tile = state.world.map.cell(job.tx, job.ty);
+    if (tile?.type !== TileType.MINE) {
+      worker.interruptedJob = null;
+      if (worker.state === 'waitingResume') worker.state = 'idle';
+      return false;
+    }
+
+    if (!tile.mine) tile.mine = { workerId: null };
+    this.clearStaleMineOccupation(state, tile);
+
+    if (tile.mine.workerId && tile.mine.workerId !== worker.id) return false;
+    if (tile.reserved && tile.reserved.workerId !== worker.id) return false;
+    if (this.hasMonsterNear(state, job, GameConfig.worker.resumeThreatRange)) return false;
+
+    const path = findPath(state.world.map, worker, { x: job.tx, y: job.ty });
+    if (!path) return false;
+
+    tile.reserved = {
+      workerId: worker.id,
+      action: JobType.MINE
+    };
+
+    Object.assign(worker, {
+      job: {
+        type: JobType.MINE,
+        tx: job.tx,
+        ty: job.ty,
+        label: job.label ?? '派工采矿'
+      },
+      path,
+      pathIndex: 1,
+      state: 'moving',
+      progress: 0,
+      carry: 0,
+      flee: false,
+      interruptedJob: null
+    });
+
+    this.showMessage('矿山附近安全，工人返回继续采矿。');
+    return true;
+  }
+
+  hasMonsterNear(state, point, range) {
+    const x = point.tx ?? point.x;
+    const y = point.ty ?? point.y;
+
+    return state.monsters.some(monster =>
+      !monster.dead &&
+      Math.abs(monster.x - x) <= range &&
+      Math.abs(monster.y - y) <= range
+    );
+  }
+
   finish(state, worker) {
     const { tx, ty, type } = worker.job;
     const map = state.world.map;
@@ -289,15 +353,17 @@ export class WorkerSystem {
   }
 
   home(worker) {
+    const shouldWaitResume = worker.flee && worker.interruptedJob?.type === JobType.MINE;
+
     Object.assign(worker, {
       job: null,
-      state: 'idle',
+      state: shouldWaitResume ? 'waitingResume' : 'idle',
       path: [],
       pathIndex: 0,
       progress: 0,
       carry: 0,
       flee: false,
-      interruptedJob: null
+      interruptedJob: shouldWaitResume ? worker.interruptedJob : null
     });
   }
 
