@@ -1,4 +1,5 @@
 import { GameConfig } from '../game/config/GameConfig.js';
+import { ArcherSystem } from '../game/systems/ArcherSystem.js';
 import { createInitialState } from '../game/state/createInitialState.js';
 import { CampSystem } from '../game/systems/CampSystem.js';
 import { DayNightSystem } from '../game/systems/DayNightSystem.js';
@@ -48,6 +49,7 @@ export class GameApp {
     this.resourceSystem = new ResourceSystem(this.showMessage);
     this.workerSystem = new WorkerSystem(this.campSystem, this.resourceSystem, this.showMessage);
     this.populationSystem = new PopulationSystem(this.campSystem, this.showMessage);
+    this.archerSystem = new ArcherSystem(this.showMessage);
     this.monsterSystem = new MonsterSystem(
       this.campSystem,
       this.dayNightSystem,
@@ -99,6 +101,7 @@ export class GameApp {
       this.resourceSystem.update(this.state, dt);
       this.workerSystem.update(this.state, dt);
       this.populationSystem.update(this.state, dt);
+      this.archerSystem.update(this.state, dt);
       this.monsterSystem.update(this.state, dt);
     }
 

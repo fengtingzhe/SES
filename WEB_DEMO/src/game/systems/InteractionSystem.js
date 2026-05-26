@@ -44,6 +44,17 @@ export class InteractionSystem {
       return this.createInfo(state, x, y, InteractionAction.MINE, label);
     }
 
+    if (tile.type === TileType.WALL_BASE) {
+      const label = tile.reserved ? '建墙中' : '建造围墙 2';
+      return this.createInfo(
+        state,
+        x,
+        y,
+        tile.reserved ? InteractionAction.RESERVED : InteractionAction.WALL,
+        label
+      );
+    }
+
     if (tile.reserved) {
       return this.createInfo(state, x, y, InteractionAction.RESERVED, '已有工人正在处理');
     }
@@ -155,7 +166,8 @@ export class InteractionSystem {
       target.action === InteractionAction.CHOP ||
       target.action === InteractionAction.REPAIR ||
       target.action === InteractionAction.CAMP ||
-      target.action === InteractionAction.MINE
+      target.action === InteractionAction.MINE ||
+      target.action === InteractionAction.WALL
     ) {
       this.workerSystem.assignJob(state, target);
     }

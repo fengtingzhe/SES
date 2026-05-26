@@ -51,7 +51,7 @@ export function createInitialState() {
     },
     hover: null,
     message: {
-      text: 'v0.7-refactor：流民、人口池与职业转换迁移中。',
+      text: 'v0.8-refactor：围墙、防御与弓箭手战斗闭环迁移中。',
       ttl: GameConfig.messageSeconds
     }
   };
@@ -82,6 +82,9 @@ export function createArcher(id, x, y, homeId) {
     y,
     homeId,
     state: 'idle',
-    lost: false
+    lost: false,
+    aimingTargetId: null,
+    aimTimer: 0,
+    cooldown: 0
   };
 }

@@ -1,5 +1,5 @@
 export const GameConfig = {
-  version: 'WEB_DEMO v0.7-refactor',
+  version: 'WEB_DEMO v0.8-refactor',
 
   map: {
     width: 74,
@@ -37,6 +37,19 @@ export const GameConfig = {
 
   mine: {
     productionSeconds: 30
+  },
+
+  wall: {
+    maxHp: 3,
+    attackSeconds: 1,
+    attackDistance: 0.6
+  },
+
+  archer: {
+    range: 5.5,
+    aimSeconds: 0.6,
+    cooldownSeconds: 2.2,
+    damage: 1
   },
 
   dayNight: {

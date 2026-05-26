@@ -20,7 +20,10 @@ export class HudRenderer {
     const returningRefugees = state.refugees.filter(refugee => !refugee.done).length;
     const unassignedPopulation = state.population.unassigned.length;
     const archers = state.archers.filter(archer => !archer.lost).length;
+    const aimingArchers = state.archers.filter(archer => !archer.lost && archer.state === 'aim').length;
+    const coolingArchers = state.archers.filter(archer => !archer.lost && archer.state === 'cooldown').length;
     const refugeeFires = this.countRefugeeFires(state);
+    const walls = this.countWalls(state);
     const busyWorkers = totalWorkers - idleWorkers;
     const phaseText = state.time.phase === 'night'
       ? '夜晚'
@@ -40,7 +43,8 @@ export class HudRenderer {
         <span>采矿：<b>${miningWorkers}</b></span>
         <span>待转职：<b>${unassignedPopulation}</b></span>
         <span>返程流民：<b>${returningRefugees}</b></span>
-        <span>弓箭手：<b>${archers}</b></span>
+        <span>弓箭手：<b>${archers}</b>（瞄准 <b>${aimingArchers}</b> / 冷却 <b>${coolingArchers}</b>）</span>
+        <span>围墙：<b>${walls.total}</b>（受损 <b>${walls.damaged}</b>）</span>
         <span>流民火堆：<b>${refugeeFires.available}</b> 可招募 / <b>${refugeeFires.cooling}</b> 冷却</span>
         <span>撤退：<b>${fleeingWorkers}</b></span>
         <span>失踪：<b>${lostWorkers}</b></span>
@@ -73,5 +77,18 @@ export class HudRenderer {
     });
 
     return { available, cooling };
+  }
+
+  countWalls(state) {
+    let total = 0;
+    let damaged = 0;
+
+    state.world.map.forEach(tile => {
+      if (tile.type !== TileType.WALL) return;
+      total += 1;
+      if ((tile.hp || 0) < GameConfig.wall.maxHp) damaged += 1;
+    });
+
+    return { total, damaged };
   }
 }

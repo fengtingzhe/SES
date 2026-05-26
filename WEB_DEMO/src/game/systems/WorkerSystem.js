@@ -212,6 +212,7 @@ export class WorkerSystem {
       map.setTile(tx, ty, TileType.CAMP);
       const camp = this.campSystem.addCamp(state, tx, ty);
       this.createCareerSitesNear(state, tx, ty);
+      this.createWallBasesNear(state, tx, ty);
       Object.assign(worker, {
         x: tx,
         y: ty,
@@ -226,6 +227,15 @@ export class WorkerSystem {
         interruptedJob: null
       });
       this.showMessage('新营地建成，工人留在当前营地。');
+      return;
+    }
+
+    if (type === JobType.WALL) {
+      if (tile?.type === TileType.WALL_BASE) {
+        map.setTile(tx, ty, TileType.WALL, { hp: GameConfig.wall.maxHp });
+        this.showMessage('围墙建造完成。');
+      }
+      this.returnHome(state, worker);
       return;
     }
 
@@ -360,6 +370,20 @@ export class WorkerSystem {
     for (const site of sites) {
       if (map.cell(site.x, site.y)?.type === TileType.GROUND) {
         map.setTile(site.x, site.y, site.type);
+      }
+    }
+  }
+
+  createWallBasesNear(state, x, y) {
+    const map = state.world.map;
+    const bases = [
+      { x: x + 4, y: y + 1 },
+      { x: x - 2, y: y + 1 }
+    ];
+
+    for (const base of bases) {
+      if (map.cell(base.x, base.y)?.type === TileType.GROUND) {
+        map.setTile(base.x, base.y, TileType.WALL_BASE);
       }
     }
   }

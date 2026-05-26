@@ -6,6 +6,7 @@ export const InteractionAction = {
   REFUGEE_COOLDOWN: 'refugeeCooldown',
   PICK_PLACED_STONE: 'pickPlacedStone',
   MINE: 'mine',
+  WALL: 'wall',
   RESERVED: 'reserved',
   CHOP: 'chop',
   REPAIR: 'repair',
@@ -19,9 +20,10 @@ export const InteractionPriority = {
   [InteractionAction.CONVERT_ARCHER]: 4,
   [InteractionAction.MINE]: 5,
   [InteractionAction.PICK_PLACED_STONE]: 6,
-  [InteractionAction.RESERVED]: 7,
-  [InteractionAction.REFUGEE_COOLDOWN]: 7,
-  [InteractionAction.CHOP]: 8,
-  [InteractionAction.REPAIR]: 9,
-  [InteractionAction.CAMP]: 10
+  [InteractionAction.WALL]: 7,
+  [InteractionAction.RESERVED]: 8,
+  [InteractionAction.REFUGEE_COOLDOWN]: 8,
+  [InteractionAction.CHOP]: 9,
+  [InteractionAction.REPAIR]: 10,
+  [InteractionAction.CAMP]: 11
 };

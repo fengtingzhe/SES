@@ -16,6 +16,8 @@ const TILE_COLORS = {
   [TileType.REFUGEE_FIRE]: '#66513d',
   [TileType.WORKER_HUT]: '#806642',
   [TileType.ARCHER_CAMP]: '#5d774f',
+  [TileType.WALL_BASE]: '#8f815d',
+  [TileType.WALL]: '#a8aaa3',
   [TileType.FOG]: '#271b32',
   [TileType.GOAL]: '#35627c'
 };
@@ -119,6 +121,12 @@ export class WorldRenderer {
       }
       if (tile.type === TileType.WORKER_HUT) this.label(context, screen.x, screen.y - 24, '工人屋');
       if (tile.type === TileType.ARCHER_CAMP) this.label(context, screen.x, screen.y - 24, '弓箭手营');
+      if (tile.type === TileType.WALL_BASE) {
+        this.label(context, screen.x, screen.y - 24, tile.reserved ? '建墙中' : '墙基');
+      }
+      if (tile.type === TileType.WALL) {
+        this.label(context, screen.x, screen.y - 24, `围墙 ${tile.hp || 0}/${GameConfig.wall.maxHp}`);
+      }
       if (tile.type === TileType.FOG) this.label(context, screen.x, screen.y - 24, '雾门');
       if (tile.type === TileType.GOAL) this.label(context, screen.x, screen.y - 24, '远方信标');
       if (hovered) this.label(context, screen.x, screen.y - 44, state.hover.label);
@@ -221,16 +229,28 @@ export class WorldRenderer {
     context.fillStyle = '#6f4a2f';
     context.fillRect(point.x - 5, point.y - 8, 10, 13);
 
-    const labelText = {
+    const labelText = worker.state === 'work'
+      ? this.workerWorkLabel(worker)
+      : {
       idle: '工人',
       moving: '前往',
-      work: '工作',
       mining: `采矿 ${Math.max(1, Math.ceil(GameConfig.mine.productionSeconds - worker.progress))}`,
       return: '返回',
       flee: '撤退'
     }[worker.state] ?? '工人';
     this.label(context, point.x, point.y - 34, labelText);
     context.restore();
+  }
+
+  workerWorkLabel(worker) {
+    const remaining = Math.max(1, Math.ceil(GameConfig.worker.workDuration - worker.progress));
+    const labels = {
+      chop: '砍树',
+      repair: '修桥',
+      camp: '点火',
+      wall: '建墙'
+    };
+    return `${labels[worker.job?.type] ?? '工作'} ${remaining}`;
   }
 
   drawRefugee(context, state, refugee, viewport) {
@@ -248,12 +268,30 @@ export class WorldRenderer {
   drawArcher(context, state, archer, viewport) {
     const point = this.toScreen(archer.x, archer.y, state, viewport);
     context.save();
+    if (archer.state === 'aim' && archer.aimingTargetId) {
+      const target = state.monsters.find(monster => monster.id === archer.aimingTargetId && !monster.dead);
+      if (target) {
+        const targetPoint = this.toScreen(target.x, target.y, state, viewport);
+        context.strokeStyle = 'rgba(255,241,184,.55)';
+        context.lineWidth = 2;
+        context.beginPath();
+        context.moveTo(point.x, point.y - 14);
+        context.lineTo(targetPoint.x, targetPoint.y - 16);
+        context.stroke();
+      }
+    }
+
     context.fillStyle = '#b8d7a4';
     context.beginPath();
     context.arc(point.x, point.y - 14, 6, 0, Math.PI * 2);
     context.fill();
     context.fillRect(point.x - 5, point.y - 8, 10, 13);
-    this.label(context, point.x, point.y - 34, '弓箭手');
+    const labelText = archer.state === 'aim'
+      ? '瞄准'
+      : archer.state === 'cooldown'
+        ? `冷却 ${Math.ceil(archer.cooldown || 0)}`
+        : '弓箭手';
+    this.label(context, point.x, point.y - 34, labelText);
     context.restore();
   }
 
@@ -266,7 +304,8 @@ export class WorldRenderer {
     context.fill();
     context.fillStyle = '#32203f';
     context.fillRect(point.x - 7, point.y - 8, 14, 16);
-    this.label(context, point.x, point.y - 38, monster.returning ? '返回雾门' : '黑林影');
+    const labelText = monster.returning ? '返回雾门' : monster.attacking ? '攻墙' : '黑林影';
+    this.label(context, point.x, point.y - 38, labelText);
     context.restore();
   }
 

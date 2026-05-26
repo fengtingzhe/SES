@@ -89,6 +89,7 @@ export class MapGenerator {
     map.setTile(start.x, start.y, TileType.VILLAGE);
     map.setTile(start.x + 2, start.y, TileType.MINE, { mine: { workerId: null } });
     this.placeCareerSites(map, start.x, start.y);
+    this.placeWallBases(map, start.x, start.y);
   }
 
   placeCareerSites(map, x, y) {
@@ -97,6 +98,19 @@ export class MapGenerator {
     }
     if (map.cell(x + 3, y + 2)?.type === TileType.GROUND) {
       map.setTile(x + 3, y + 2, TileType.ARCHER_CAMP);
+    }
+  }
+
+  placeWallBases(map, x, y) {
+    const bases = [
+      { x: x + 4, y: y + 1 },
+      { x: x - 2, y: y + 1 }
+    ];
+
+    for (const base of bases) {
+      if (map.cell(base.x, base.y)?.type === TileType.GROUND) {
+        map.setTile(base.x, base.y, TileType.WALL_BASE);
+      }
     }
   }
 

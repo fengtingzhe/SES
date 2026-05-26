@@ -36,6 +36,8 @@ export class MonsterSystem {
       x: fog.x,
       y: fog.y,
       hp: GameConfig.monster.hp,
+      attackTimer: 0,
+      attacking: false,
       returning: false,
       raidCamp,
       targetKey: null,
@@ -82,9 +84,11 @@ export class MonsterSystem {
 
   findTarget(state, monster) {
     const stones = this.findStoneTargets(state, monster);
+    const walls = this.findWallTargets(state, monster);
     const workerTargets = this.findWorkerTargets(state, monster);
+    const archerTargets = this.findArcherTargets(state, monster);
     const playerTargets = this.findPlayerTarget(state, monster);
-    const allTargets = [...stones, ...workerTargets, ...playerTargets];
+    const allTargets = [...stones, ...walls, ...workerTargets, ...archerTargets, ...playerTargets];
 
     if (monster.targetLock > 0 && monster.targetKey) {
       const locked = allTargets.find(target => monsterTargetKey(target) === monster.targetKey);
@@ -92,7 +96,9 @@ export class MonsterSystem {
     }
 
     if (stones.length) return stones[0];
+    if (walls.length) return walls[0];
     if (workerTargets.length) return workerTargets[0];
+    if (archerTargets.length) return archerTargets[0];
     if (playerTargets.length) return playerTargets[0];
 
     if (!monster.raidCamp) monster.raidCamp = this.campSystem.nearestHome(state, monster);
@@ -116,6 +122,27 @@ export class MonsterSystem {
     return targets;
   }
 
+  findWallTargets(state, monster) {
+    const targets = [];
+    const range = GameConfig.monster.tacticalRange;
+
+    for (let y = Math.floor(monster.y - range); y <= Math.ceil(monster.y + range); y += 1) {
+      for (let x = Math.floor(monster.x - range); x <= Math.ceil(monster.x + range); x += 1) {
+        const tile = state.world.map.cell(x, y);
+        if (
+          tile?.type === TileType.WALL &&
+          (tile.hp || 0) > 0 &&
+          tacticalDistance(monster, { x, y }) <= range
+        ) {
+          targets.push({ kind: MonsterTargetKind.WALL, object: { x, y } });
+        }
+      }
+    }
+
+    targets.sort((a, b) => distance(monster, a.object) - distance(monster, b.object));
+    return targets;
+  }
+
   findWorkerTargets(state, monster) {
     return state.workers
       .filter(worker =>
@@ -124,6 +151,16 @@ export class MonsterSystem {
       )
       .sort((a, b) => distance(monster, a) - distance(monster, b))
       .map(worker => ({ kind: MonsterTargetKind.WORKER, object: worker }));
+  }
+
+  findArcherTargets(state, monster) {
+    return state.archers
+      .filter(archer =>
+        !archer.lost &&
+        tacticalDistance(monster, archer) <= GameConfig.monster.tacticalRange
+      )
+      .sort((a, b) => distance(monster, a) - distance(monster, b))
+      .map(archer => ({ kind: MonsterTargetKind.ARCHER, object: archer }));
   }
 
   findPlayerTarget(state, monster) {
@@ -140,8 +177,18 @@ export class MonsterSystem {
       if (d > GameConfig.monster.campStopDistance) {
         this.moveToward(monster, object, dt);
       }
+      monster.attacking = false;
+      monster.attackTimer = 0;
       return;
     }
+
+    if (target.kind === MonsterTargetKind.WALL) {
+      this.attackWall(state, monster, object, d, dt);
+      return;
+    }
+
+    monster.attacking = false;
+    monster.attackTimer = 0;
 
     if (d > 0.05) {
       this.moveToward(monster, object, dt);
@@ -169,7 +216,42 @@ export class MonsterSystem {
     if (target.kind === MonsterTargetKind.WORKER) {
       this.hitWorker(state, object);
       monster.dead = true;
+      return;
     }
+
+    if (target.kind === MonsterTargetKind.ARCHER) {
+      this.hitArcher(object);
+      monster.dead = true;
+    }
+  }
+
+  attackWall(state, monster, object, distanceToWall, dt) {
+    if (distanceToWall >= GameConfig.wall.attackDistance) {
+      this.moveToward(monster, object, dt);
+      monster.attacking = false;
+      monster.attackTimer = 0;
+      return;
+    }
+
+    monster.attacking = true;
+    monster.attackTimer = (monster.attackTimer || 0) + dt;
+    if (monster.attackTimer < GameConfig.wall.attackSeconds) return;
+
+    monster.attackTimer = 0;
+    const x = Math.round(object.x);
+    const y = Math.round(object.y);
+    const wall = state.world.map.cell(x, y);
+    if (wall?.type !== TileType.WALL || (wall.hp || 0) <= 0) return;
+
+    wall.hp -= 1;
+    if (wall.hp <= 0) {
+      state.world.map.blank(x, y);
+      monster.attacking = false;
+      this.showMessage('围墙被摧毁。');
+      return;
+    }
+
+    this.showMessage(`围墙受损 ${wall.hp}/${GameConfig.wall.maxHp}。`);
   }
 
   hitPlayer(state) {
@@ -197,6 +279,20 @@ export class MonsterSystem {
     });
 
     this.showMessage('一名工人被黑林影拖走。');
+  }
+
+  hitArcher(archer) {
+    if (!archer || archer.lost) return;
+
+    Object.assign(archer, {
+      lost: true,
+      state: 'lost',
+      aimingTargetId: null,
+      aimTimer: 0,
+      cooldown: 0
+    });
+
+    this.showMessage('一名弓箭手被黑林影拖走。');
   }
 
   returnToFog(state, monster, dt) {

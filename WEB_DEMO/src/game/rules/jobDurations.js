@@ -5,5 +5,6 @@ export const JobDurations = {
   [JobType.CHOP]: GameConfig.worker.workDuration,
   [JobType.REPAIR]: GameConfig.worker.workDuration,
   [JobType.CAMP]: GameConfig.worker.workDuration,
-  [JobType.MINE]: 0
+  [JobType.MINE]: 0,
+  [JobType.WALL]: GameConfig.worker.workDuration
 };
