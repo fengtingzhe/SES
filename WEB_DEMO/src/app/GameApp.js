@@ -1,10 +1,12 @@
 import { GameConfig } from '../game/config/GameConfig.js';
 import { createInitialState } from '../game/state/createInitialState.js';
+import { CampSystem } from '../game/systems/CampSystem.js';
 import { InputManager } from '../game/systems/InputManager.js';
 import { InteractionSystem } from '../game/systems/InteractionSystem.js';
 import { PlayerSystem } from '../game/systems/PlayerSystem.js';
 import { ResourceSystem } from '../game/systems/ResourceSystem.js';
 import { VisionSystem } from '../game/systems/VisionSystem.js';
+import { WorkerSystem } from '../game/systems/WorkerSystem.js';
 import { CanvasRenderer } from '../presentation/renderers/CanvasRenderer.js';
 import { HudRenderer } from '../presentation/renderers/HudRenderer.js';
 
@@ -38,8 +40,10 @@ export class GameApp {
     });
     this.playerSystem = new PlayerSystem(this.inputManager);
     this.visionSystem = new VisionSystem();
+    this.campSystem = new CampSystem();
     this.resourceSystem = new ResourceSystem(this.showMessage);
-    this.interactionSystem = new InteractionSystem(this.resourceSystem, this.showMessage);
+    this.workerSystem = new WorkerSystem(this.campSystem, this.resourceSystem, this.showMessage);
+    this.interactionSystem = new InteractionSystem(this.resourceSystem, this.workerSystem, this.showMessage);
 
     this.canvasRenderer.attach();
     this.inputManager.attach();
@@ -72,12 +76,10 @@ export class GameApp {
   }
 
   update(dt) {
-    const moved = this.playerSystem.update(this.state, dt);
-    if (moved) {
-      this.visionSystem.reveal(this.state);
-    }
-
+    this.playerSystem.update(this.state, dt);
     this.resourceSystem.update(this.state, dt);
+    this.workerSystem.update(this.state, dt);
+    this.visionSystem.reveal(this.state);
     this.state.hover = this.interactionSystem.findInteract(this.state, false);
 
     if (this.state.message.ttl > 0) {

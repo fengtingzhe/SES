@@ -1,6 +1,6 @@
 {
   "name": "web-demo",
-  "version": "0.2.0-refactor",
+  "version": "0.3.0-refactor",
   "private": true,
   "type": "module",
   "scripts": {

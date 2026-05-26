@@ -17,6 +17,7 @@ export class MapGenerator {
     this.createRiverSkeleton(map, path, 22);
     this.createRiverSkeleton(map, path, 45);
     this.createStartArea(map);
+    this.placeWorkSites(map, path);
     this.placeStarterStones(map, path);
     map.setTile(this.config.goal.x, this.config.goal.y, TileType.GOAL);
 
@@ -72,9 +73,7 @@ export class MapGenerator {
       map.setTile(rx, y, TileType.WATER);
     }
 
-    for (let dy = -1; dy <= 1; dy += 1) {
-      map.blank(rx, crossing.y + dy);
-    }
+    map.setTile(rx, crossing.y, TileType.BROKEN_BRIDGE, { job: 'repair' });
   }
 
   createStartArea(map) {
@@ -85,6 +84,41 @@ export class MapGenerator {
       }
     }
     map.setTile(start.x, start.y, TileType.VILLAGE);
+  }
+
+  placeWorkSites(map, path) {
+    const { start } = this.config;
+    const treeSpots = [
+      { x: start.x + 3, y: start.y - 2 },
+      { x: start.x + 4, y: start.y - 2 },
+      { x: start.x + 4, y: start.y + 2 }
+    ];
+
+    for (const spot of treeSpots) {
+      if (map.cell(spot.x, spot.y)) {
+        map.setTile(spot.x, spot.y, TileType.FOREST, { job: 'chop' });
+      }
+    }
+
+    const campAnchor = path[Math.min(31, path.length - 1)];
+    const campY = clamp(campAnchor.y + 2, 4, this.config.height - 5);
+    const campSpot = this.findNearestGround(map, campAnchor.x, campY);
+    if (campSpot) {
+      map.setTile(campSpot.x, campSpot.y, TileType.OLD_FIREPIT, { job: 'camp' });
+    }
+  }
+
+  findNearestGround(map, x, y) {
+    for (let radius = 0; radius <= 6; radius += 1) {
+      for (let yy = y - radius; yy <= y + radius; yy += 1) {
+        for (let xx = x - radius; xx <= x + radius; xx += 1) {
+          if (map.cell(xx, yy)?.type === TileType.GROUND) {
+            return { x: xx, y: yy };
+          }
+        }
+      }
+    }
+    return null;
   }
 
   placeStarterStones(map, path) {

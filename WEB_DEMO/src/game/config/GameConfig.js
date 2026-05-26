@@ -1,5 +1,5 @@
 export const GameConfig = {
-  version: 'WEB_DEMO v0.2-refactor',
+  version: 'WEB_DEMO v0.3-refactor',
 
   map: {
     width: 74,
@@ -16,11 +16,22 @@ export const GameConfig = {
 
   resource: {
     initialStone: 6,
-    placedStoneLife: 10
+    placedStoneLife: 10,
+    pickupRadius: 0.8,
+    droppedStoneLife: 10
   },
 
   population: {
-    reservedWorkers: 2
+    initialWorkers: 2
+  },
+
+  worker: {
+    speed: 2.25,
+    workDuration: 4
+  },
+
+  home: {
+    startId: 'home-start'
   },
 
   vision: {

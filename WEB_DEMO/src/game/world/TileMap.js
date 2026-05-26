@@ -2,14 +2,21 @@ export const TileType = {
   FOREST: 'forest',
   GROUND: 'ground',
   WATER: 'water',
+  BROKEN_BRIDGE: 'brokenBridge',
+  BRIDGE: 'bridge',
   VILLAGE: 'village',
+  CAMP: 'camp',
+  OLD_FIREPIT: 'oldFirepit',
   STONE: 'stone',
   GOAL: 'goal'
 };
 
 const PASSABLE_TYPES = new Set([
   TileType.GROUND,
+  TileType.BRIDGE,
   TileType.VILLAGE,
+  TileType.CAMP,
+  TileType.OLD_FIREPIT,
   TileType.STONE,
   TileType.GOAL
 ]);
@@ -22,6 +29,8 @@ export function createTile(type = TileType.FOREST, extra = {}) {
     value: 0,
     life: null,
     placed: false,
+    job: null,
+    reserved: null,
     ...extra
   };
 }
@@ -61,6 +70,15 @@ export class TileMap {
 
   setStone(x, y, value = 1, life = null, placed = false) {
     return this.setTile(x, y, TileType.STONE, { value, life, placed });
+  }
+
+  neighbors(x, y) {
+    return [
+      { x: x + 1, y },
+      { x: x - 1, y },
+      { x, y: y + 1 },
+      { x, y: y - 1 }
+    ].filter(point => this.isPassable(point.x, point.y));
   }
 
   isPassable(x, y) {

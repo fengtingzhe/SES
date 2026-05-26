@@ -1,4 +1,5 @@
 import { GameConfig } from '../config/GameConfig.js';
+import { distance } from '../utils/grid.js';
 import { TileType } from '../world/TileMap.js';
 
 export class ResourceSystem {
@@ -7,6 +8,8 @@ export class ResourceSystem {
   }
 
   update(state, dt) {
+    this.autoPickup(state);
+
     state.world.map.forEach((tile, x, y) => {
       if (tile.type !== TileType.STONE || tile.life == null) return;
 
@@ -17,15 +20,22 @@ export class ResourceSystem {
     });
   }
 
-  collectStone(state, target) {
-    const tile = state.world.map.cell(target.x, target.y);
-    if (!tile || tile.type !== TileType.STONE) return false;
+  autoPickup(state) {
+    let gained = 0;
 
-    const amount = tile.value || 1;
-    state.resources.stone += amount;
-    state.world.map.blank(target.x, target.y);
-    this.showMessage(`获得辉石 +${amount}`);
-    return true;
+    state.world.map.forEach((tile, x, y) => {
+      if (tile.type !== TileType.STONE || tile.placed) return;
+
+      if (distance(state.player, { x, y }) < GameConfig.resource.pickupRadius) {
+        gained += tile.value || 1;
+        state.world.map.blank(x, y);
+      }
+    });
+
+    if (gained > 0) {
+      state.resources.stone += gained;
+      this.showMessage(`获得辉石 +${gained}`);
+    }
   }
 
   placeStone(state) {
@@ -65,6 +75,25 @@ export class ResourceSystem {
     state.resources.stone -= 1;
     map.setStone(target.x, target.y, 1, GameConfig.resource.placedStoneLife, true);
     this.showMessage('放置辉石 -1。');
+    return true;
+  }
+
+  dropStoneNear(state, x, y, value = 1) {
+    const map = state.world.map;
+    const points = [];
+
+    for (let yy = Math.round(y) - 2; yy <= Math.round(y) + 2; yy += 1) {
+      for (let xx = Math.round(x) - 2; xx <= Math.round(x) + 2; xx += 1) {
+        if (map.cell(xx, yy)?.type === TileType.GROUND) {
+          points.push({ x: xx, y: yy });
+        }
+      }
+    }
+
+    const target = points[0];
+    if (!target) return false;
+
+    map.setStone(target.x, target.y, value, GameConfig.resource.droppedStoneLife, false);
     return true;
   }
 }

@@ -3,8 +3,9 @@ import { TileType } from '../world/TileMap.js';
 import { InteractionAction, InteractionPriority } from '../rules/interactionPriority.js';
 
 export class InteractionSystem {
-  constructor(resourceSystem, showMessage) {
+  constructor(resourceSystem, workerSystem, showMessage) {
     this.resourceSystem = resourceSystem;
+    this.workerSystem = workerSystem;
     this.showMessage = showMessage;
   }
 
@@ -16,8 +17,20 @@ export class InteractionSystem {
       return this.createInfo(state, x, y, InteractionAction.GOAL, '抵达远方信标');
     }
 
-    if (tile.type === TileType.STONE) {
-      return this.createInfo(state, x, y, InteractionAction.COLLECT_STONE, `拾取辉石 +${tile.value || 1}`);
+    if (tile.reserved) {
+      return this.createInfo(state, x, y, InteractionAction.RESERVED, '已有工人正在处理');
+    }
+
+    if (tile.job === InteractionAction.CHOP) {
+      return this.createInfo(state, x, y, InteractionAction.CHOP, '砍树 1');
+    }
+
+    if (tile.job === InteractionAction.REPAIR) {
+      return this.createInfo(state, x, y, InteractionAction.REPAIR, '修桥 2');
+    }
+
+    if (tile.job === InteractionAction.CAMP) {
+      return this.createInfo(state, x, y, InteractionAction.CAMP, '点亮旧火塘 2');
     }
 
     return null;
@@ -76,8 +89,17 @@ export class InteractionSystem {
       return;
     }
 
-    if (target.action === InteractionAction.COLLECT_STONE) {
-      this.resourceSystem.collectStone(state, target);
+    if (target.action === InteractionAction.RESERVED) {
+      this.showMessage('已有工人正在处理。');
+      return;
+    }
+
+    if (
+      target.action === InteractionAction.CHOP ||
+      target.action === InteractionAction.REPAIR ||
+      target.action === InteractionAction.CAMP
+    ) {
+      this.workerSystem.assignJob(state, target);
     }
   }
 }

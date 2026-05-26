@@ -6,7 +6,11 @@ const TILE_COLORS = {
   [TileType.FOREST]: '#162a22',
   [TileType.GROUND]: '#355c43',
   [TileType.WATER]: '#244456',
+  [TileType.BROKEN_BRIDGE]: '#67462e',
+  [TileType.BRIDGE]: '#785535',
   [TileType.VILLAGE]: '#6a653e',
+  [TileType.CAMP]: '#4d653d',
+  [TileType.OLD_FIREPIT]: '#4b4b3e',
   [TileType.STONE]: '#74bdb2',
   [TileType.GOAL]: '#35627c'
 };
@@ -29,6 +33,8 @@ export class WorldRenderer {
   render(context, state, viewport) {
     this.updateCamera(state, viewport);
     this.drawTiles(context, state, viewport);
+    this.drawWorkerPaths(context, state, viewport);
+    state.workers.forEach(worker => this.drawWorker(context, state, worker, viewport));
     this.drawPlayer(context, state, viewport);
   }
 
@@ -73,7 +79,18 @@ export class WorldRenderer {
     }
 
     if (tile.visible) {
+      if (tile.type === TileType.FOREST && tile.job === 'chop') {
+        this.label(context, screen.x, screen.y - 24, tile.reserved ? '砍树中' : '可砍树');
+      }
+      if (tile.type === TileType.BROKEN_BRIDGE) {
+        this.label(context, screen.x, screen.y - 24, tile.reserved ? '修桥中' : '断桥');
+      }
+      if (tile.type === TileType.OLD_FIREPIT) {
+        this.label(context, screen.x, screen.y - 24, tile.reserved ? '点亮中' : '旧火塘');
+      }
+      if (tile.type === TileType.BRIDGE) this.label(context, screen.x, screen.y - 24, '桥');
       if (tile.type === TileType.VILLAGE) this.label(context, screen.x, screen.y - 24, '部落');
+      if (tile.type === TileType.CAMP) this.label(context, screen.x, screen.y - 24, '营地');
       if (tile.type === TileType.GOAL) this.label(context, screen.x, screen.y - 24, '远方信标');
       if (hovered) this.label(context, screen.x, screen.y - 44, state.hover.label);
     }
@@ -132,6 +149,49 @@ export class WorldRenderer {
     context.fillRect(point.x - 7, point.y - 11, 14, 18);
 
     this.label(context, point.x, point.y - 42, directionLabel(state.player.facing));
+  }
+
+  drawWorkerPaths(context, state, viewport) {
+    context.save();
+    context.strokeStyle = 'rgba(255,241,184,.22)';
+    context.lineWidth = 2;
+
+    for (const worker of state.workers) {
+      if (!worker.path || worker.pathIndex >= worker.path.length) continue;
+
+      let point = this.toScreen(worker.x, worker.y, state, viewport);
+      context.beginPath();
+      context.moveTo(point.x, point.y);
+
+      for (let i = worker.pathIndex; i < worker.path.length; i += 1) {
+        point = this.toScreen(worker.path[i].x, worker.path[i].y, state, viewport);
+        context.lineTo(point.x, point.y);
+      }
+
+      context.stroke();
+    }
+
+    context.restore();
+  }
+
+  drawWorker(context, state, worker, viewport) {
+    const point = this.toScreen(worker.x, worker.y, state, viewport);
+    context.save();
+    context.fillStyle = worker.state === 'idle' ? '#f0d28b' : '#d9a65f';
+    context.beginPath();
+    context.arc(point.x, point.y - 14, 6, 0, Math.PI * 2);
+    context.fill();
+    context.fillStyle = '#6f4a2f';
+    context.fillRect(point.x - 5, point.y - 8, 10, 13);
+
+    const labelText = {
+      idle: '工人',
+      moving: '前往',
+      work: '工作',
+      return: '返回'
+    }[worker.state] ?? '工人';
+    this.label(context, point.x, point.y - 34, labelText);
+    context.restore();
   }
 
   label(context, x, y, text) {

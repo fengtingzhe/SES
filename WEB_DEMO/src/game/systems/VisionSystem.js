@@ -14,7 +14,8 @@ export class VisionSystem {
       const point = { x, y };
       const visible =
         distance(point, state.player) < GameConfig.vision.playerRadius ||
-        distance(point, start) < GameConfig.vision.startRadius;
+        distance(point, start) < GameConfig.vision.startRadius ||
+        state.homes.some(home => distance(point, home) < GameConfig.vision.startRadius);
 
       if (visible) {
         tile.visible = true;

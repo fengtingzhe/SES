@@ -83,3 +83,16 @@ v0.3-refactor 开始前，应先完成该修正：
 确认方式：主控对话确认
 适用范围：WEB_DEMO v0.3-refactor 起
 ```
+
+---
+
+## v0.3-refactor 执行状态
+
+```text
+状态：已执行
+实现方式：
+1. 从 InteractionSystem 移除自然辉石 Space 拾取职责。
+2. 在 ResourceSystem 中实现自然辉石靠近自动拾取。
+3. 玩家主动放置的临时辉石通过 placed 标记区分，不会被自动拾回。
+4. 临时辉石仍保留生命周期，供后续黑影诱敌系统接入。
+```
