@@ -1,0 +1,94 @@
+:root {
+  color: #eef4ef;
+  background: #111917;
+  font-family: Inter, "Microsoft YaHei", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+.game-shell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #111917;
+}
+
+.world-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.hud {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  min-width: min(420px, calc(100vw - 28px));
+  max-width: min(520px, calc(100vw - 28px));
+  padding: 12px 14px;
+  border: 1px solid rgba(239, 226, 176, 0.22);
+  border-radius: 8px;
+  background: rgba(10, 18, 16, 0.78);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(8px);
+  line-height: 1.65;
+  pointer-events: none;
+}
+
+.hud h1 {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.hud-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  font-size: 13px;
+  color: #dbe7df;
+}
+
+.hud b {
+  color: #fff1b8;
+}
+
+.hint {
+  margin-top: 6px;
+  color: #b9c8be;
+  font-size: 12px;
+}
+
+.toast {
+  position: absolute;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  max-width: min(620px, calc(100vw - 32px));
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 241, 184, 0.26);
+  border-radius: 8px;
+  background: rgba(13, 20, 18, 0.86);
+  color: #fff1b8;
+  font-size: 14px;
+  text-align: center;
+  opacity: 0;
+  transition: opacity 160ms ease;
+  pointer-events: none;
+}
+
+.toast.is-visible {
+  opacity: 1;
+}
