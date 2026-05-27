@@ -2,550 +2,510 @@
 
 ---
 
-# 当前任务：WEB_DEMO v1.2-config-prep GameConfig 整理与配置化准备
+# 当前任务：WEB_DEMO v1.3-dev-balance-console 随机辉石修正 + 数值基线 + 内置调试控制台
 
 ## 任务背景
 
-WEB_DEMO 当前已经完成第一轮核心功能迁移，并新增了天气与条件事件框架：
+WEB_DEMO 已完成：
 
 ```text
-v1.0-refactor：体验回归与辅助信息整理
-v1.0-fix-1：采矿工人自动复工 + 颠倒森林反转迟滞修复
+v1.0-refactor：GPT_DEMO 到 WEB_DEMO 的完整玩法迁移
+v1.0-fix-1：采矿复工与颠倒森林迟滞修复
 v1.1-weather-event：天气系统与条件事件触发框架
-后续小调整：顶部阶段 / 天气状态条、颠倒森林边界手感优化
+v1.2-config-prep：GameConfig 整理与配置化准备
 ```
 
-当前项目已经具备：
+当前项目已经具备完整核心链路：
 
 ```text
-探索、辉石、派工、昼夜、黑影、矿山、流民、职业、围墙、防御、特殊事件、终点、天气、条件事件、小地图、HUD 辅助信息
+探索 → 收集辉石 → 派工建设 → 昼夜压力 → 黑影威胁 → 采矿与复工 → 流民与转职 → 围墙与弓箭手 → 特殊事件 → 天气事件 → 终点看海
 ```
 
-继续新增玩法前，需要先整理配置结构。否则后续数值设计、调参、内容扩展和外部配置拆分都会变得困难。
-
-本轮目标不是新增系统，而是把当前 WEB_DEMO 的静态数值、规则参数、事件参数、HUD / UI 参数和可配置文案整理清楚。
-
----
-
-# 本轮目标
-
-版本名称：
+接下来需要同时解决三件事：
 
 ```text
-WEB_DEMO v1.2-config-prep GameConfig 整理与配置化准备
+1. 修复 v1.2 审核中发现的随机辉石生成范围配置语义风险。
+2. 建立基础数值框架与试玩节奏基线，为后续调参做准备。
+3. 新增 WEB_DEMO 内置调试控制台 / 策划测试台，提高数值、天气、事件和单位状态验证效率。
 ```
 
-本轮要完成：
+本轮合并三个原计划版本：
 
 ```text
-1. 整理 GameConfig 结构。
-2. 给所有配置字段补充清晰中文注释。
-3. 区分“策划参数”和“程序常量”。
-4. 把散落在代码中的魔法数字尽量集中到 GameConfig。
-5. 新增 WEB_DEMO/docs/config_reference.md。
-6. 在 config_reference.md 中说明字段路径、中文含义、默认值、单位、是否策划参数、影响系统和注意事项。
-7. 为后续 JSON / CSV 拆分做准备。
+WEB_DEMO v1.2-fix-1：随机辉石生成范围命名/公式修正
+WEB_DEMO v1.3-balance-foundation：基础数值框架与试玩节奏基线
+WEB_DEMO 内置调试控制台 / 策划测试台
+```
+
+合并后的版本名称：
+
+```text
+WEB_DEMO v1.3-dev-balance-console
 ```
 
 ---
 
-# 重要原则
+# 本轮总目标
 
-## 一、本轮只做配置整理，不做外部配置读取
-
-禁止本轮实现：
+本轮分三条子任务推进：
 
 ```text
-1. 不拆 JSON。
-2. 不拆 CSV。
-3. 不接入外部配置加载器。
-4. 不做配置编辑器。
-5. 不做 Excel / 表格导入。
-6. 不做运行时热更新配置。
+A. 随机辉石生成范围命名 / 公式修正
+B. 基础数值框架与试玩节奏基线文档
+C. 内置调试控制台 / 策划测试台
 ```
 
-当前仍然使用：
+核心原则：
 
 ```text
-WEB_DEMO/src/game/config/GameConfig.js
-```
-
-作为唯一配置中心。
-
----
-
-## 二、本轮不做数值平衡
-
-可以整理字段、补注释、归类参数，但不要随意改默认数值。
-
-允许小范围重命名或移动字段，但必须保证行为基本一致。
-
-如果必须调整数值，需要在 changelog 和审计文档中说明原因。
-
----
-
-## 三、优先保证现有玩法不坏
-
-整理配置时必须保持现有功能可运行：
-
-```text
-探索、拾取辉石、临时辉石、派工砍树、修桥、建营地、采矿、昼夜、黑影、流民、转职、围墙、弓箭手、颠倒森林、狐狸婚仪、终点、天气、小地图、HUD
+1. 修正配置语义风险。
+2. 建立数值设计文档，而不是做正式数值平衡。
+3. 增加开发调试工具，而不是新增正式玩家玩法。
+4. 不拆 JSON / CSV。
+5. 不修改 GPT_DEMO。
+6. 不新增正式剧情、美术、音效、存档或移动端适配。
 ```
 
 ---
 
-# 推荐 GameConfig 结构
+# A. 随机辉石生成范围命名 / 公式修正
 
-请根据当前代码实际情况整理，不要求完全一字不差，但建议形成以下结构：
+## 问题说明
+
+v1.2-config-prep 中，随机辉石生成使用了：
 
 ```js
-GameConfig = {
-  version,
-
-  map: {},
-  player: {},
-  resource: {},
-  worker: {},
-  job: {},
-  population: {},
-  mine: {},
-  wall: {},
-  archer: {},
-  monster: {},
-  dayNight: {},
-  weather: {},
-  weatherEvents: {},
-  events: {},
-  vision: {},
-  camera: {},
-  ui: {},
-  message: {}
-}
+x = randomMinX + randomInt(width - randomMaxXMargin)
+y = randomMinY + randomInt(height - randomMaxYMargin)
 ```
 
-如果当前已有字段不适合移动，可以保留，但需要在 `config_reference.md` 中说明。
+当前字段名 `randomMaxXMargin` / `randomMaxYMargin` 容易被理解为“右侧 / 下侧边距”。
 
----
-
-# 必须整理的配置模块
-
-## 1. map 地图配置
-
-至少包含或说明：
+但当前公式实际最大值接近：
 
 ```text
-地图宽高
-起点坐标
-终点坐标
-地图随机种子
-主路径 / 分支 / 河流 / 特殊点生成相关参数，如果当前仍散落在 MapGenerator 中，应尽量迁入 GameConfig.map 或 GameConfig.mapGeneration
+randomMinX + (width - randomMaxXMargin - 1)
+randomMinY + (height - randomMaxYMargin - 1)
 ```
 
-注意：不要求重写地图生成算法，只迁移明显魔法数字。
+这会导致字段名语义与实际范围不一致，后续调参容易出错。
 
----
+## 修正目标
 
-## 2. player 玩家配置
+推荐方案：保留“边距”语义，修正公式。
 
-至少包含或说明：
+修正为：
 
-```text
-玩家速度
-初始朝向
-颠倒森林退出迟滞时间
-颠倒森林移动锁定相关配置，如果有
-无敌时间如果由 monster.playerInvulnerableSeconds 管理，需要在文档中说明
+```js
+x = randomMinX + randomInt(width - randomMaxXMargin - randomMinX)
+y = randomMinY + randomInt(height - randomMaxYMargin - randomMinY)
 ```
 
----
-
-## 3. resource 辉石配置
-
-至少包含或说明：
+这样实际生成范围为：
 
 ```text
-初始辉石
-放置辉石持续时间
-掉落辉石持续时间
-自然辉石拾取半径
-临时辉石拾回相关距离 / 规则
+x >= randomMinX
+x < width - randomMaxXMargin
+
+y >= randomMinY
+y < height - randomMaxYMargin
 ```
 
----
+## 要求
 
-## 4. worker 工人配置
-
-至少包含或说明：
+必须修改：
 
 ```text
-工人移动速度
-默认工作时长
-夜晚威胁感知范围
-采矿复工安全范围
-待复工状态相关参数
-```
-
----
-
-## 5. job 任务配置
-
-建议将任务成本与时长统一整理到 `GameConfig.job` 或保持现有 `jobCosts.js / jobDurations.js` 但在配置文档说明来源。
-
-至少覆盖：
-
-```text
-砍树成本 / 时长
-修桥成本 / 时长
-建营地成本 / 时长
-建墙成本 / 时长
-采矿成本 0 的规则
-```
-
-如果当前成本还在独立 rules 文件中，不强制迁移，但必须在 `config_reference.md` 说明：
-
-```text
-当前任务成本仍位于 WEB_DEMO/src/game/rules/jobCosts.js，后续可迁入 GameConfig.job。
-```
-
----
-
-## 6. population 人口与转职配置
-
-至少包含或说明：
-
-```text
-初始工人数量
-招募流民成本
-流民火堆冷却
-流民移动速度
-转职成本
-待转职人口规则
-```
-
----
-
-## 7. mine 矿山配置
-
-至少包含或说明：
-
-```text
-矿山产出周期
-每次产出辉石数量，如果当前写死为 1，需要迁入配置或记录待迁移
-矿山占用规则说明
-```
-
----
-
-## 8. wall 围墙配置
-
-至少包含或说明：
-
-```text
-围墙最大 HP
-黑影攻墙间隔
-攻墙距离
-围墙是否可通行：当前为待策划确认项，必须在文档中保留说明
-```
-
----
-
-## 9. archer 弓箭手配置
-
-至少包含或说明：
-
-```text
-射程
-瞄准时间
-冷却时间
-伤害
-黑影 HP=1 因此一箭击杀的关系说明
-```
-
----
-
-## 10. monster 黑影配置
-
-至少包含或说明：
-
-```text
-每晚生成数量
-生成间隔
-最大活跃数
-4 格战术感知范围
-目标锁定时间
-移动速度
-攻击距离
-营地推进距离
-HP
-玩家受击无敌时间
-目标优先级如仍在代码中，需在 config_reference.md 说明位置和后续可配置化方向
-```
-
----
-
-## 11. dayNight 昼夜配置
-
-至少包含或说明：
-
-```text
-一天总时长
-初始时间
-黄昏开始比例
-夜晚开始比例
-夜晚判定点
-顶部阶段显示是否只读取当前 phase
-```
-
----
-
-## 12. weather 天气配置
-
-至少包含或说明：
-
-```text
-每日触发概率
-判定阶段
-随机种子
-雨 / 雪 / 大风配置
-天气权重
-持续时间范围
-天气标签
-```
-
----
-
-## 13. weatherEvents 天气事件配置
-
-至少包含或说明：
-
-```text
-检查间隔
-区域扫描半径
-生成点搜索半径
-随机种子
-事件规则数组
-规则 id
-regionTag
-weather
-chance
-eventId
-cooldownDays
-```
-
-必须说明：
-
-```text
-WeatherSystem 不直接写死事件，WeatherEventSystem 根据规则触发事件。
-```
-
----
-
-## 14. events 特殊事件配置
-
-至少包含或说明：
-
-```text
-颠倒森林半径
-狐狸婚仪奖励辉石
-狐狸婚仪持续时间
-移动周期
-移动时长
-队列速度
-狐狸数量
-队列间距
-成功 / 失败距离阈值
-```
-
----
-
-## 15. vision / camera / ui / message
-
-至少包含或说明：
-
-```text
-玩家视野半径
-起点初始揭示半径
-格子尺寸
-镜头缩放
-镜头跟随速度
-小地图尺寸
-HUD / 顶部阶段天气条相关配置，如当前在 CSS 中则说明
-消息显示时长
-```
-
----
-
-# 魔法数字清理要求
-
-请扫描以下目录：
-
-```text
-WEB_DEMO/src/game/**
-WEB_DEMO/src/app/**
-WEB_DEMO/src/presentation/**
-```
-
-将明显可配置的魔法数字迁入 GameConfig。
-
-优先迁移：
-
-```text
-时间
-距离
-半径
-数量
-成本
-产出
-冷却
-概率
-UI 尺寸
-消息持续时间
-事件奖励
-```
-
-不强制迁移：
-
-```text
-循环索引
-数组下标
-简单数学常量
-渲染中非常局部的像素微调
-CSS 纯样式尺寸
-```
-
-如果不迁移，需要在 config_reference 或 known_issues 中说明后续可迁移方向。
-
----
-
-# config_reference.md 要求
-
-新增文件：
-
-```text
+WEB_DEMO/src/game/world/MapGenerator.js
+WEB_DEMO/src/game/config/GameConfig.js
 WEB_DEMO/docs/config_reference.md
-```
-
-必须使用表格，至少包含以下列：
-
-```text
-字段路径
-中文说明
-默认值
-单位
-是否策划参数
-影响系统
-注意事项
-```
-
-示例：
-
-```markdown
-| 字段路径 | 中文说明 | 默认值 | 单位 | 是否策划参数 | 影响系统 | 注意事项 |
-|---|---:|---:|---|---|---|---|
-| worker.speed | 工人移动速度 | 2.25 | 格/秒 | 是 | 工人移动、派工、返程、逃跑 | 过低会降低白天效率，过高会削弱夜晚风险 |
 ```
 
 要求：
 
 ```text
-1. 覆盖 GameConfig 中所有一级模块。
-2. 重点字段必须逐项说明。
-3. 对仍未迁入 GameConfig 的配置来源，要在文档中标明当前位置和后续迁移建议。
-4. 中文说明必须让非程序策划也能理解用途。
+1. 保留 randomMaxXMargin / randomMaxYMargin 命名，明确其含义是右侧 / 下侧边距。
+2. 修正 MapGenerator.placeStarterStones 中随机辉石 x/y 公式。
+3. 防御性处理：如果范围小于等于 0，不应崩溃，可跳过随机辉石生成或 clamp 到最小安全范围。
+4. config_reference.md 中说明该字段控制右侧 / 下侧边距。
+5. changelog / audit 记录这是配置语义修正，不是玩法扩展。
 ```
 
 ---
 
-# 文档更新要求
+# B. 基础数值框架与试玩节奏基线
 
-完成后必须更新：
+## 目标
+
+新增文档：
 
 ```text
-WEB_DEMO/docs/config_reference.md
-WEB_DEMO/docs/changelog.md
-WEB_DEMO/docs/acceptance_tests.md
-WEB_DEMO/docs/known_issues.md
-WEB_DEMO/design/audit/gpt_to_web_rule_audit_v1.md
+WEB_DEMO/docs/balance_notes.md
 ```
 
-## changelog.md
+该文档用于建立当前 Demo 的数值设计基线，不要求本轮正式改数值。
 
-新增：
+## 核心问题
+
+文档需要回答：
+
+```text
+1. 一局 WEB_DEMO 目标时长是多少？建议先按 10~15 分钟记录为目标假设。
+2. 旅程应如何分成早期 / 中期 / 后期？
+3. 辉石收入来源有哪些？
+4. 辉石消耗出口有哪些？
+5. 工人派遣的成本、耗时和回报是什么？
+6. 黑影压力曲线如何随天数 / 夜晚推进？
+7. 矿山产出节奏如何支撑中后期经济？
+8. 流民和转职如何影响扩张节奏？
+9. 围墙和弓箭手如何影响防御节奏？
+10. 天气事件频率会怎样影响旅程随机性？
+```
+
+## balance_notes.md 建议结构
 
 ```markdown
-## v1.2-config-prep
+# WEB_DEMO 数值与节奏基线 v1.3
 
-状态：GameConfig 整理与配置化准备完成。
+## 1. Demo 目标时长
 
-内容：
-- 整理 `GameConfig` 结构，补充中文注释。
-- 区分策划参数与程序常量。
-- 将部分散落的魔法数字迁入配置中心。
-- 新增 `WEB_DEMO/docs/config_reference.md`，说明字段路径、默认值、单位、影响系统和注意事项。
-- 本轮不拆 JSON / CSV，不接入外部配置读取，不新增玩法系统。
+## 2. 旅程阶段划分
+
+| 阶段 | 预计时间 | 玩家目标 | 核心压力 | 主要资源变化 |
+|---|---:|---|---|---|
+
+## 3. 辉石经济表
+
+| 类型 | 来源 / 出口 | 数值 | 频率 | 作用 | 风险 |
+|---|---|---:|---|---|---|
+
+## 4. 工人任务成本与回报
+
+| 任务 | 成本 | 时长 | 回报 | 风险 | 备注 |
+|---|---:|---:|---|---|---|
+
+## 5. 黑影压力表
+
+| 天数 / 阶段 | 黑影数量 | 生成节奏 | 玩家应对方式 | 风险 |
+|---|---:|---|---|---|
+
+## 6. 人口与职业成长
+
+## 7. 天气与条件事件频率
+
+## 8. 当前默认数值意图
+
+## 9. 待调参问题
+
+## 10. 后续数值表拆分建议
 ```
 
-## acceptance_tests.md
-
-新增 v1.2-config-prep 验收：
+## 要求
 
 ```text
-1. 执行 npm run dev 后项目能正常启动。
-2. 从起点到终点的核心流程仍能运行。
-3. GameConfig 结构清晰，字段有中文注释。
-4. config_reference.md 存在且覆盖所有一级配置模块。
-5. 任务成本、时间、半径、概率、天气、事件、HUD / UI 等关键参数能在配置文档中找到。
-6. 本轮没有拆 JSON / CSV。
-7. 本轮没有修改 GPT_DEMO。
-8. 本轮没有新增玩法系统。
+1. 不要求本轮正式平衡数值。
+2. 可以引用 GameConfig 当前默认值。
+3. 如果发现明显风险，只写入“待调参问题”，不要擅自大改数值。
+4. 文档必须适合策划阅读，不要只写程序字段。
 ```
 
-## known_issues.md
+---
 
-新增或更新：
+# C. WEB_DEMO 内置调试控制台 / 策划测试台
+
+## 定位
+
+这是开发期工具，不是正式玩家功能。
+
+目标：让策划和 Codex 快速验证：
 
 ```text
-1. 当前仍使用 GameConfig.js 作为配置中心，JSON / CSV 拆分后置。
-2. 部分渲染像素参数和 CSS 样式参数暂不迁入配置。
-3. 任务成本如仍在 jobCosts.js / jobDurations.js 中，记录后续是否迁入 GameConfig.job。
-4. 后续需要进入数值平衡版本，对字段默认值做正式调参。
+资源、时间、天气、天气事件、黑影、工人状态、采矿复工、流民火堆、特殊事件、终点完成
 ```
 
-## gpt_to_web_rule_audit_v1.md
+## 打开方式
 
-新增：
+第一版使用：
 
-```markdown
-## v1.2-config-prep 配置化准备记录
+```text
+F1 打开 / 关闭 Dev Console
+```
 
-### 本轮目标
+要求：
 
-- 整理 GameConfig。
-- 补中文注释。
-- 新增 config_reference.md。
-- 为未来 JSON / CSV 拆分做准备。
+```text
+1. F1 不应影响原有 F3 / M 小地图开关。
+2. Console 关闭后不影响正常游戏。
+3. Console 操作必须显示 Toast，例如“Dev：已添加 5 辉石”。
+4. Console 必须明显标记为 Dev / 调试工具，不要伪装成正式 UI。
+```
 
-### 修改位置
+---
 
-由 Codex 根据实际修改填写。
+## 建议文件结构
 
-### 保持一致的规则
+推荐新增：
 
-- 本轮不改变核心玩法规则。
-- 本轮不新增玩法系统。
-- 本轮不接入外部配置读取。
+```text
+WEB_DEMO/src/dev/DevConsole.js
+WEB_DEMO/src/dev/DevActions.js
+WEB_DEMO/src/dev/DevSelectors.js
+```
 
-### 有意重构
+职责：
 
-- 将部分散落的静态参数迁入 GameConfig。
-- 将配置字段说明从代码隐含知识转为文档化说明。
+```text
+DevConsole.js：负责 UI 渲染、页签、按钮、开关显示。
+DevActions.js：负责修改 state，例如加辉石、切天气、生成黑影。
+DevSelectors.js：负责统计当前状态，例如工人数、黑影数、待复工数。
+GameApp.js：负责挂载 DevConsole，并把 state 与必要系统引用传入。
+```
 
-### 待确认问题
+如果 Codex 认为第一版拆三文件过重，可以用两个文件：
 
-- 何时拆分 JSON / CSV。
-- 哪些字段进入正式数值表。
-- 是否建立配置校验器。
-- 是否建立策划用配置编辑器。
+```text
+WEB_DEMO/src/dev/DevConsole.js
+WEB_DEMO/src/dev/DevActions.js
+```
+
+但不要把大量调试按钮逻辑直接塞进 `GameApp.js`。
+
+---
+
+## Console 页签设计
+
+第一版建议 5 个页签：
+
+```text
+1. Overview 总览
+2. Resources 资源
+3. Time / Weather 时间与天气
+4. Units 单位
+5. Events 事件
+```
+
+暂时不要做命令行解析，先做按钮 + 状态面板。
+
+---
+
+## 1. Overview 总览
+
+显示：
+
+```text
+版本号
+游戏状态：playing / failed / completed
+当前天数
+当前阶段：白天 / 黄昏 / 黑夜
+当前天气
+玩家坐标
+辉石数量
+工人数
+空闲工人
+待复工工人
+lost 工人
+流民数量
+返程流民数量
+待转职人口
+弓箭手数量
+黑影数量
+营地数量
+围墙数量 / 受损围墙数量
+最近天气事件
+狐狸婚仪状态
+```
+
+---
+
+## 2. Resources 资源页
+
+功能按钮：
+
+```text
++1 辉石
++5 辉石
+-1 辉石
+清空辉石
+在玩家附近生成自然辉石
+在玩家附近生成临时辉石
+```
+
+显示：
+
+```text
+当前辉石数量
+地图自然辉石数量
+地图临时辉石数量
+```
+
+要求：
+
+```text
+1. 不允许把辉石数量减到负数。
+2. 生成辉石必须找玩家附近可通行空地。
+3. 如果附近没有空地，显示 Dev 提示，不崩溃。
+```
+
+---
+
+## 3. Time / Weather 时间与天气页
+
+功能按钮：
+
+```text
+切到白天
+切到黄昏
+切到黑夜
+推进到下一天
+强制触发雨
+强制触发雪
+强制触发大风
+清除天气
+立即执行天气事件判定
+```
+
+显示：
+
+```text
+当前 day
+当前 phase
+weather.current
+weather.remaining
+weather.dayRolled
+weatherEvents.lastEvent
+```
+
+要求：
+
+```text
+1. 强制天气应复用 WeatherSystem.startWeather 或等价安全方法。
+2. 清除天气应把 current / remaining / duration 清空。
+3. 立即执行天气事件判定可以通过将 checkTimer 设置到阈值，或调用安全的 dev 方法。
+4. 不要破坏 WeatherSystem 正常每日 roll 逻辑。
+```
+
+---
+
+## 4. Units 单位页
+
+功能按钮：
+
+```text
+生成 1 个工人
+生成 1 个流民火堆
+增加 1 个待转职人口
+生成 1 个弓箭手
+在玩家附近生成 1 个黑影
+清除所有黑影
+让所有工人回家
+```
+
+显示工人列表：
+
+```text
+id
+state
+job
+lost
+homeId
+interruptedJob
+```
+
+显示单位统计：
+
+```text
+workers
+refugees
+archers
+monsters
+```
+
+要求：
+
+```text
+1. 生成单位时必须分配唯一 id。
+2. 生成位置必须找玩家附近可通行空地。
+3. 清除黑影不应影响工人 / 弓箭手 / 流民。
+4. 让所有工人回家必须尽量走现有 home / path 逻辑，不要直接删除工人。
+5. 如果实现“让所有工人回家”风险较高，可以第一版只做“标记为 idle 并提示后续完善”，但必须在 known_issues 说明。
+```
+
+---
+
+## 5. Events 事件页
+
+功能按钮：
+
+```text
+触发狐狸婚仪
+强制完成狐狸婚仪
+强制失败狐狸婚仪
+在玩家附近生成流民火堆
+在玩家附近生成雾门
+在玩家附近生成矿山
+在玩家附近生成颠倒森林小区域
+完成终点目标
+重置游戏
+```
+
+显示：
+
+```text
+foxWedding.active
+foxWedding.timer
+foxWedding.failed
+foxWedding.lastResult
+weatherEvents.lastEvent
+completion
+```
+
+要求：
+
+```text
+1. 触发狐狸婚仪优先复用 SpecialEventSystem.startFoxWedding 或等价逻辑。
+2. 完成终点目标可以直接设置 completed，但必须只作为 Dev 操作。
+3. 生成雾门 / 矿山 / 颠倒森林时必须找附近合法地块。
+4. 如果某个按钮风险太高，可以在第一版隐藏或标记“后续”，不要做半坏实现。
+```
+
+---
+
+# Dev Console UI 要求
+
+```text
+1. Console 建议固定在右侧或底部。
+2. 可滚动。
+3. 不遮挡全部画面。
+4. 样式可以简单，但要清晰区分按钮、状态和页签。
+5. 不使用正式美术资源。
+6. 不引入大型 UI 框架。
+```
+
+可以新增 CSS：
+
+```text
+WEB_DEMO/src/styles.css
+```
+
+但只做轻量样式。
+
+---
+
+# 本轮不要做
+
+禁止本轮实现：
+
+```text
+1. 不做文本命令行解析。
+2. 不做配置热更新。
+3. 不做 JSON / CSV 编辑器。
+4. 不做存档。
+5. 不做复杂地图编辑器。
+6. 不做正式玩家 UI。
+7. 不新增正式剧情演出。
+8. 不新增正式美术、音乐、字体。
+9. 不做移动端适配。
+10. 不修改 GPT_DEMO/**。
 ```
 
 ---
@@ -553,10 +513,8 @@ WEB_DEMO/design/audit/gpt_to_web_rule_audit_v1.md
 # 允许修改
 
 ```text
-WEB_DEMO/src/game/config/GameConfig.js
-WEB_DEMO/src/game/**
-WEB_DEMO/src/app/**
-WEB_DEMO/src/presentation/**
+WEB_DEMO/src/**
+WEB_DEMO/docs/balance_notes.md
 WEB_DEMO/docs/config_reference.md
 WEB_DEMO/docs/changelog.md
 WEB_DEMO/docs/acceptance_tests.md
@@ -580,22 +538,103 @@ PROJECT_STATUS.md
 
 ---
 
-# 本轮不要做
+# 文档更新要求
 
-禁止本轮实现：
+完成后必须更新：
 
 ```text
-1. 不新增玩法系统。
-2. 不做天气新事件。
-3. 不做正式剧情演出。
-4. 不做完整结算系统。
-5. 不做正式图片、音乐、字体。
-6. 不做存档系统。
-7. 不做 JSON / CSV 配置读取。
-8. 不做配置编辑器。
-9. 不做移动端适配。
-10. 不大规模重构核心玩法系统。
-11. 不修改 GPT_DEMO/**。
+WEB_DEMO/docs/balance_notes.md
+WEB_DEMO/docs/config_reference.md
+WEB_DEMO/docs/changelog.md
+WEB_DEMO/docs/acceptance_tests.md
+WEB_DEMO/docs/known_issues.md
+WEB_DEMO/design/audit/gpt_to_web_rule_audit_v1.md
+```
+
+## changelog.md
+
+新增：
+
+```markdown
+## v1.3-dev-balance-console
+
+状态：开发测试工具与数值基线完成。
+
+内容：
+- 修正随机辉石生成范围的边距语义与公式，避免后续配置调参误解。
+- 新增 `WEB_DEMO/docs/balance_notes.md`，建立 Demo 目标时长、阶段节奏、辉石经济、工人任务、黑影压力、人口成长和天气事件频率基线。
+- 新增 WEB_DEMO 内置 Dev Console / 策划测试台，支持 F1 打开 / 关闭。
+- Dev Console 支持查看核心状态，并通过按钮测试资源、时间、天气、单位和事件。
+- 本轮不新增正式玩家玩法，不拆 JSON / CSV，不接入存档，不修改 GPT_DEMO。
+```
+
+## acceptance_tests.md
+
+新增 v1.3 验收：
+
+```text
+1. npm run dev 可以正常启动。
+2. 随机辉石生成范围公式使用 randomMinX / randomMaxXMargin 的真实边距语义。
+3. 固定辉石和随机辉石仍能在合理区域生成。
+4. balance_notes.md 存在，且包含 Demo 目标时长、阶段节奏、辉石经济、任务回报、黑影压力、人口成长、天气事件频率和待调参问题。
+5. 按 F1 可以打开 / 关闭 Dev Console。
+6. Dev Console Overview 能显示当前核心状态。
+7. Resources 页可以增加 / 减少辉石，并能在玩家附近生成自然辉石 / 临时辉石。
+8. Time / Weather 页可以切换白天 / 黄昏 / 黑夜，强制雨 / 雪 / 大风，并清除天气。
+9. Units 页可以生成黑影、清除黑影，并显示工人状态。
+10. Events 页至少能生成流民火堆、完成终点或显示后续按钮状态。
+11. Console 关闭后正常游戏不受影响。
+12. 本轮没有修改 GPT_DEMO。
+13. 本轮没有拆 JSON / CSV、没有新增存档、没有新增正式玩家玩法。
+```
+
+## known_issues.md
+
+新增或更新：
+
+```text
+1. Dev Console 是开发期工具，不是正式玩家 UI。
+2. 第一版 Dev Console 不做文本命令行、不做配置热更新、不做地图编辑器。
+3. 某些高风险 Dev 操作如果第一版未实现，应记录为后续。
+4. balance_notes.md 只是数值基线，不代表正式平衡完成。
+5. 后续仍需进入正式调参版本。
+```
+
+## gpt_to_web_rule_audit_v1.md
+
+新增：
+
+```markdown
+## v1.3-dev-balance-console 记录
+
+### 本轮目标
+
+- 修正随机辉石生成范围配置语义。
+- 新增基础数值框架与试玩节奏基线文档。
+- 新增 WEB_DEMO 内置 Dev Console / 策划测试台。
+
+### 修改位置
+
+由 Codex 根据实际修改填写。
+
+### 保持一致的规则
+
+- 不改变核心玩法规则。
+- 不新增正式玩家玩法。
+- 不接入外部配置读取。
+- 不修改 GPT_DEMO。
+
+### 有意重构 / 扩展
+
+- 将随机辉石生成范围公式修正为与边距字段语义一致。
+- 将数值意图从隐含经验整理为 balance_notes.md。
+- 将测试操作从手动等待流程扩展为 Dev Console 按钮操作。
+
+### 待确认问题
+
+- Dev Console 后续是否保留到正式 Demo，还是仅开发构建启用。
+- 哪些数值字段进入正式数值表。
+- 是否需要配置校验器和数值模拟器。
 ```
 
 ---
@@ -605,18 +644,17 @@ PROJECT_STATUS.md
 必须满足：
 
 ```text
-1. GameConfig 结构更清晰。
-2. 关键字段有中文注释。
-3. 明确区分策划参数和程序常量，至少在 config_reference.md 中说明。
-4. 明显的时间、距离、半径、概率、成本、奖励等魔法数字已尽量迁入 GameConfig，或在文档中说明暂不迁移。
-5. 新增 WEB_DEMO/docs/config_reference.md。
-6. config_reference.md 覆盖所有一级配置模块。
-7. changelog、acceptance_tests、known_issues、审计文档已同步。
-8. npm run dev 不应因配置整理报错。
-9. 现有核心玩法不应因配置整理失效。
-10. 本轮没有拆 JSON / CSV。
-11. 本轮没有新增玩法系统。
-12. 本轮没有修改 GPT_DEMO。
+1. 修正随机辉石生成范围公式或命名，使配置语义清晰。
+2. 新增 balance_notes.md。
+3. Dev Console 可以通过 F1 打开 / 关闭。
+4. Dev Console 至少包含 Overview、Resources、Time / Weather、Units、Events 五类信息或等价分区。
+5. Dev Console 至少能执行：加辉石、减辉石、切天气、清天气、生成黑影、清除黑影、生成流民火堆。
+6. Dev Console 能查看工人状态，尤其是 waitingResume / interruptedJob。
+7. Console 关闭后正常游戏不受影响。
+8. changelog、acceptance_tests、known_issues、audit 已同步。
+9. 本轮没有拆 JSON / CSV。
+10. 本轮没有新增正式玩家玩法。
+11. 本轮没有修改 GPT_DEMO。
 ```
 
 ---
@@ -627,12 +665,13 @@ PROJECT_STATUS.md
 
 ```text
 1. 修改 / 新增了哪些文件。
-2. GameConfig 做了哪些结构整理。
-3. 哪些魔法数字迁入了 GameConfig。
-4. 哪些魔法数字暂未迁移，原因是什么。
-5. config_reference.md 覆盖了哪些模块。
-6. 是否改变了任何默认数值或玩法规则。
-7. 是否修改了 GPT_DEMO。
-8. 如何运行和验证。
-9. 后续 JSON / CSV 拆分建议。
+2. 随机辉石范围公式如何修正。
+3. balance_notes.md 包含哪些数值基线内容。
+4. Dev Console 如何打开 / 关闭。
+5. Dev Console 支持哪些页签和按钮。
+6. 哪些 Dev 操作未实现并后置。
+7. 是否改变了任何正式玩法数值。
+8. 是否修改了 GPT_DEMO。
+9. 如何运行和验证。
+10. 后续建议进入什么版本。
 ```
