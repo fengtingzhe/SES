@@ -1,5 +1,46 @@
 # Acceptance Tests
 
+## v1.3-dev-balance-console 随机辉石修正 + 数值基线 + 内置调试控制台验收
+
+测试名称：WEB_DEMO v1.3-dev-balance-console 随机辉石修正 + 数值基线 + 内置调试控制台
+
+前置条件：
+- 已安装 Node.js，或可通过 `npx` 运行 Vite。
+- 本轮只做随机辉石边距公式修正、数值基线文档和 Dev Console。
+- 本轮不新增正式玩家玩法，不拆 JSON / CSV，不接入存档，不修改 GPT_DEMO。
+
+操作步骤：
+1. 进入 `WEB_DEMO` 目录。
+2. 执行 `npm install`（如依赖已存在可跳过）。
+3. 执行 `npm run build`，确认可以构建通过。
+4. 执行 `npm run dev`。
+5. 打开浏览器访问 Vite 输出的本地地址。
+6. 确认 HUD 版本或初始提示显示 `WEB_DEMO v1.3-dev-balance-console`。
+7. 打开 `WEB_DEMO/src/game/world/MapGenerator.js`，确认随机辉石公式为 `randomMinX + randomInt(width - randomMaxXMargin - randomMinX)` 和 `randomMinY + randomInt(height - randomMaxYMargin - randomMinY)`。
+8. 确认随机辉石实际范围为 `randomMinX <= x < width - randomMaxXMargin`、`randomMinY <= y < height - randomMaxYMargin`。
+9. 确认当有效范围小于等于 0 时，会跳过随机辉石散点而不是越界。
+10. 打开 `WEB_DEMO/docs/balance_notes.md`，确认记录了资源、任务成本、昼夜压力、防御、单位、地图资源分布、天气事件和试玩节奏基线。
+11. 在游戏中按 F1，确认 Dev Console 打开；再次按 F1，确认 Dev Console 关闭。
+12. 在 Dev Console 的“资源”页点击辉石 +1、辉石 +5、辉石 -1、清零辉石、生成自然辉石、生成临时辉石，确认状态变化并且不会产生 JavaScript 报错。
+13. 在“时间天气”页点击设为白天、黄昏、黑夜、推进下一天，确认 HUD 阶段随之变化。
+14. 在“时间天气”页点击设为雨、雪、大风、清除天气、立即判定天气事件，确认天气状态可被调试控制。
+15. 在“单位”页点击生成工人、待转职人口 +1、生成弓箭手、生成黑影、清除黑影、召回工人，确认 HUD 或场上实体变化。
+16. 在“事件”页点击生成流民火堆、开始 / 完成 / 失败狐狸成亲、生成雾门、生成矿山、生成颠倒森林、直接完成目标、重置游戏，确认可用于快速测试对应现有系统。
+17. 验证 Dev Console 操作只作为开发 / 策划测试入口，不改变正式玩家的默认操作闭环。
+18. 回归基础玩法：移动、视野揭示、Space 互动、自然辉石自动拾取、临时辉石放置 / 拾回、工人派工、矿山、流民、防御、特殊事件和终点目标仍可正常运行。
+19. 检查源代码中没有新增 JSON / CSV 配置读取、配置编辑器、存档系统或正式新玩法。
+20. 检查 `GPT_DEMO/**` 未被修改。
+
+预期结果：
+1. 随机辉石边距语义清晰，右侧 / 下侧边距不再被误当成随机区间长度。
+2. 随机辉石不会生成到预期边距之外，也不会因异常范围越界。
+3. `balance_notes.md` 提供当前试玩数值基线和后续调参观察点。
+4. F1 可以稳定打开 / 关闭 Dev Console。
+5. Dev Console 至少包含总览、资源、时间天气、单位、事件五组信息 / 调试能力。
+6. Dev Console 不进入正式玩家玩法，不接入外部配置、存档或正式资源。
+7. 现有核心玩法规则不因本轮调试工具接入发生回归。
+8. GPT_DEMO 未被修改。
+
 ## v1.2-config-prep GameConfig 整理与配置化准备验收
 
 测试名称：WEB_DEMO v1.2-config-prep GameConfig 整理与配置化准备

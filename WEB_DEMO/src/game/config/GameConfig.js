@@ -1,6 +1,6 @@
 export const GameConfig = {
   // 当前 WEB_DEMO 版本号，只用于 HUD、文档核对和本地验收提示；属于程序常量。
-  version: 'WEB_DEMO v1.2-config-prep',
+  version: 'WEB_DEMO v1.3-dev-balance-console',
 
   map: {
     // 地图宽度，单位：格。影响世界尺寸、寻路范围和小地图比例；调整会改变整张地图结构。
@@ -154,13 +154,13 @@ export const GameConfig = {
         fixedValue: 1,
         // 随机散落辉石尝试数量，单位：次。
         randomCount: 16,
-        // 随机辉石最低 x 坐标，单位：格。
+        // 随机辉石最低 x 坐标，单位：格。表示左侧安全边距；影响开局资源离起点的最小推进距离，调低会让资源过早出现。
         randomMinX: 6,
-        // 随机辉石最高 x 坐标使用 width - randomMaxXMargin 计算。
+        // 随机辉石右侧安全边距，单位：格。实际 x 范围为 [randomMinX, width - randomMaxXMargin)；调低会让随机辉石更靠近终点或地图右边缘。
         randomMaxXMargin: 12,
-        // 随机辉石最低 y 坐标，单位：格。
+        // 随机辉石最低 y 坐标，单位：格。表示上侧安全边距；影响资源是否贴近地图顶部。
         randomMinY: 5,
-        // 随机辉石最高 y 坐标使用 height - randomMaxYMargin 计算。
+        // 随机辉石下侧安全边距，单位：格。实际 y 范围为 [randomMinY, height - randomMaxYMargin)；调低会让随机辉石更靠近地图底边。
         randomMaxYMargin: 10,
         // 随机辉石默认数量，单位：个。
         randomValue: 1
@@ -467,7 +467,7 @@ export const GameConfig = {
     // Toast 消息默认显示时长，单位：秒。
     ttlSeconds: 2.2,
     // 新开局初始提示文本。只影响 UI 展示，不影响玩法规则。
-    initialText: 'v1.2-config-prep：GameConfig 整理与配置化准备。'
+    initialText: 'v1.3-dev-balance-console：随机辉石范围修正，F1 打开 Dev Console。'
   },
 
   app: {

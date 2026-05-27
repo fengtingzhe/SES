@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.3-dev-balance-console
+
+状态：随机辉石修正 + 数值基线 + 内置 Dev Console 完成。
+
+内容：
+- 修正 `MapGenerator.placeStarterStones()` 中随机辉石范围公式：`randomMaxXMargin` / `randomMaxYMargin` 现在明确表示右侧 / 下侧安全边距，实际范围为 `[min, size - margin)`，不再把 `min` 额外叠加到范围上限之外。
+- 为随机辉石范围加入无效区间保护；如果地图尺寸、最小坐标和边距组合导致范围小于等于 0，则跳过随机辉石散点，避免越界。
+- 更新 `GameConfig` 版本号、初始提示和随机辉石字段中文注释，明确用途、单位、影响范围和调参风险。
+- 新增 `WEB_DEMO/docs/balance_notes.md`，记录当前资源、任务、昼夜、黑影、防御、人口、天气事件和试玩节奏基线。
+- 新增内置 Dev Console / 策划测试台，按 F1 打开 / 关闭。
+- Dev Console 当前支持总览、资源、时间天气、单位、事件五个页签，用于快速验证资源、天气、黑夜、单位生成、黑影、流民火堆、狐狸成亲、雾门、矿山、颠倒森林和终点目标。
+- 本轮没有新增正式玩家玩法，没有拆分 JSON / CSV，没有接入存档，没有修改 `GPT_DEMO/**`。
+
 ## v1.2-config-prep
 
 状态：GameConfig 整理与配置化准备完成。

@@ -10,11 +10,12 @@ const MOVEMENT_KEYS = new Set([
 ]);
 
 export class InputManager {
-  constructor({ onInteract, onReset, onToggleMiniMap }) {
+  constructor({ onInteract, onReset, onToggleMiniMap, onToggleDevConsole }) {
     this.keys = new Map();
     this.onInteract = onInteract;
     this.onReset = onReset;
     this.onToggleMiniMap = onToggleMiniMap;
+    this.onToggleDevConsole = onToggleDevConsole;
     this.handleKeyDown = this.handleKeyDown.bind(this);
     this.handleKeyUp = this.handleKeyUp.bind(this);
   }
@@ -49,6 +50,11 @@ export class InputManager {
     if ((key === 'F3' || key === 'm') && !event.repeat) {
       event.preventDefault();
       this.onToggleMiniMap();
+    }
+
+    if (key === 'F1' && !event.repeat) {
+      event.preventDefault();
+      this.onToggleDevConsole();
     }
   }
 

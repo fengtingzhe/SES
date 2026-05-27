@@ -14,6 +14,7 @@ import { VisionSystem } from '../game/systems/VisionSystem.js';
 import { WeatherEventSystem } from '../game/systems/WeatherEventSystem.js';
 import { WeatherSystem } from '../game/systems/WeatherSystem.js';
 import { WorkerSystem } from '../game/systems/WorkerSystem.js';
+import { DevConsole } from '../dev/DevConsole.js';
 import { CanvasRenderer } from '../presentation/renderers/CanvasRenderer.js';
 import { HudRenderer } from '../presentation/renderers/HudRenderer.js';
 
@@ -25,6 +26,8 @@ export class GameApp {
     this.showMessage = this.showMessage.bind(this);
     this.reset = this.reset.bind(this);
     this.toggleMiniMap = this.toggleMiniMap.bind(this);
+    this.toggleDevConsole = this.toggleDevConsole.bind(this);
+    this.getDevContext = this.getDevContext.bind(this);
     this.loop = this.loop.bind(this);
   }
 
@@ -34,6 +37,7 @@ export class GameApp {
         <canvas class="world-canvas" aria-label="WEB_DEMO game canvas"></canvas>
         <section class="hud" aria-live="polite"></section>
         <div class="phase-banner" aria-live="polite"></div>
+        <aside class="dev-console is-hidden" aria-live="polite"></aside>
         <div class="toast" aria-live="polite"></div>
       </div>
     `;
@@ -47,8 +51,13 @@ export class GameApp {
     this.inputManager = new InputManager({
       onInteract: () => this.interactionSystem.interact(this.state),
       onReset: this.reset,
-      onToggleMiniMap: this.toggleMiniMap
+      onToggleMiniMap: this.toggleMiniMap,
+      onToggleDevConsole: this.toggleDevConsole
     });
+    this.devConsole = new DevConsole(
+      this.rootElement.querySelector('.dev-console'),
+      this.getDevContext
+    );
     this.playerSystem = new PlayerSystem(this.inputManager);
     this.visionSystem = new VisionSystem();
     this.campSystem = new CampSystem();
@@ -74,6 +83,7 @@ export class GameApp {
 
     this.canvasRenderer.attach();
     this.inputManager.attach();
+    this.devConsole.attach();
     this.reset();
 
     this.lastFrame = performance.now();
@@ -101,12 +111,30 @@ export class GameApp {
     this.showMessage(this.state.ui.showMiniMap ? '显示小地图。' : '隐藏小地图。');
   }
 
+  toggleDevConsole() {
+    this.devConsole?.toggle();
+  }
+
+  getDevContext() {
+    return {
+      state: this.state,
+      showMessage: this.showMessage,
+      resetGame: this.reset,
+      campSystem: this.campSystem,
+      workerSystem: this.workerSystem,
+      weatherSystem: this.weatherSystem,
+      weatherEventSystem: this.weatherEventSystem,
+      specialEventSystem: this.specialEventSystem
+    };
+  }
+
   loop(now) {
     const dt = Math.min(GameConfig.app.maxFrameDeltaSeconds, (now - this.lastFrame) / 1000);
     this.lastFrame = now;
     this.update(dt);
     this.canvasRenderer.render(this.state);
     this.hudRenderer.render(this.state);
+    this.devConsole.refresh();
     this.animationFrame = requestAnimationFrame(this.loop);
   }
 

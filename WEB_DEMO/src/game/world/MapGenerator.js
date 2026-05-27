@@ -278,9 +278,13 @@ export class MapGenerator {
       }
     });
 
+    const randomXRange = this.config.width - config.randomMaxXMargin - config.randomMinX;
+    const randomYRange = this.config.height - config.randomMaxYMargin - config.randomMinY;
+    if (randomXRange <= 0 || randomYRange <= 0) return;
+
     for (let i = 0; i < config.randomCount; i += 1) {
-      const x = config.randomMinX + randomInt(this.random, this.config.width - config.randomMaxXMargin);
-      const y = config.randomMinY + randomInt(this.random, this.config.height - config.randomMaxYMargin);
+      const x = config.randomMinX + randomInt(this.random, randomXRange);
+      const y = config.randomMinY + randomInt(this.random, randomYRange);
       if (map.cell(x, y)?.type === TileType.GROUND) {
         map.setStone(x, y, config.randomValue);
       }

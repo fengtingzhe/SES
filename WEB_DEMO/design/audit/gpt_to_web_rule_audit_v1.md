@@ -1,5 +1,50 @@
 # GPT_DEMO -> WEB_DEMO 规则审计 v1
 
+## v1.3-dev-balance-console 记录
+
+### 本轮目标
+
+- 修正随机辉石生成范围配置语义，使 `randomMaxXMargin` / `randomMaxYMargin` 明确表示右侧 / 下侧边距。
+- 新增基础数值框架与试玩节奏基线文档。
+- 新增 WEB_DEMO 内置 Dev Console / 策划测试台，用于快速验证资源、时间、天气、单位和事件状态。
+
+### 修改位置
+
+- `WEB_DEMO/src/game/world/MapGenerator.js`
+- `WEB_DEMO/src/game/config/GameConfig.js`
+- `WEB_DEMO/src/game/systems/InputManager.js`
+- `WEB_DEMO/src/app/GameApp.js`
+- `WEB_DEMO/src/dev/DevConsole.js`
+- `WEB_DEMO/src/dev/DevActions.js`
+- `WEB_DEMO/src/dev/DevSelectors.js`
+- `WEB_DEMO/src/styles.css`
+- `WEB_DEMO/docs/balance_notes.md`
+- `WEB_DEMO/docs/config_reference.md`
+- `WEB_DEMO/docs/changelog.md`
+- `WEB_DEMO/docs/acceptance_tests.md`
+- `WEB_DEMO/docs/known_issues.md`
+- `WEB_DEMO/design/audit/gpt_to_web_rule_audit_v1.md`
+
+### 保持一致的规则
+
+- 不改变核心玩法规则。
+- 不新增正式玩家玩法。
+- 不接入外部配置读取、JSON / CSV 或存档。
+- 不修改 `GPT_DEMO/**`。
+- Dev Console 的状态修改均作为开发 / 策划测试操作，不纳入正式玩家操作闭环。
+
+### 有意重构 / 扩展
+
+- 随机辉石生成范围修正为 `randomMinX + randomInt(width - randomMaxXMargin - randomMinX)` 与 `randomMinY + randomInt(height - randomMaxYMargin - randomMinY)`，让字段语义与实际范围一致。
+- 将当前数值意图从隐含经验整理为 `balance_notes.md`，作为后续调参和拆表前的基线。
+- 将部分需要等待的测试流程扩展为 Dev Console 按钮操作，例如切换阶段、强制天气、生成黑影、生成流民火堆和完成终点目标。
+
+### 待确认问题
+
+- Dev Console 后续是否保留到正式 Demo，还是仅开发构建启用。
+- 哪些数值字段进入正式数值表，哪些继续保留为程序常量。
+- 是否需要配置校验器、数值模拟器、调试日志导出或更完整的地图编辑能力。
+
 ## v1.2-config-prep 配置化准备记录
 
 ### 任务目标

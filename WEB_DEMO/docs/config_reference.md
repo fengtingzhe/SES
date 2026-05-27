@@ -1,4 +1,4 @@
-# WEB_DEMO 配置参考 v1.2-config-prep
+# WEB_DEMO 配置参考 v1.3-dev-balance-console
 
 本文件记录 `WEB_DEMO/src/game/config/GameConfig.js` 当前配置字段。当前版本仍以 `GameConfig.js` 作为唯一配置中心，没有拆分 JSON / CSV，也没有接入外部配置读取。
 
@@ -12,7 +12,7 @@
 
 | 字段路径 | 中文说明 | 默认值 | 单位 | 是否策划参数 | 影响系统 | 注意事项 |
 |---|---|---:|---|---|---|---|
-| version | 当前 WEB_DEMO 版本号 | `WEB_DEMO v1.2-config-prep` | 文本 | 否 | HUD、验收 | 只用于显示和核对，不影响玩法 |
+| version | 当前 WEB_DEMO 版本号 | `WEB_DEMO v1.3-dev-balance-console` | 文本 | 否 | HUD、验收 | 只用于显示和核对，不影响玩法 |
 | map.width | 地图宽度 | 74 | 格 | 是 | 地图、寻路、小地图 | 改动会影响所有生成坐标 |
 | map.height | 地图高度 | 54 | 格 | 是 | 地图、寻路、小地图 | 改动会影响所有生成坐标 |
 | map.start | 起点坐标 | `{ x: 5, y: 27 }` | 格坐标 | 是 | 玩家、家园、视野、开局设施 | 高风险字段，改动需同步开局布局 |
@@ -70,10 +70,10 @@
 | map.generation.starterStones.firstFixedValue | 第一颗固定辉石数量 | 2 | 个 | 是 | 资源 | 当前第一颗较高价值 |
 | map.generation.starterStones.fixedValue | 其他固定辉石数量 | 1 | 个 | 是 | 资源 | 沿途基础补给 |
 | map.generation.starterStones.randomCount | 随机辉石尝试次数 | 16 | 次 | 是 | 资源、探索 | 不是保证生成数量 |
-| map.generation.starterStones.randomMinX | 随机辉石最低 x | 6 | 格 | 是 | 资源、探索 | 避免起点左侧 |
-| map.generation.starterStones.randomMaxXMargin | 随机辉石最高 x 边距 | 12 | 格 | 是 | 资源、探索 | 避免贴近终点外侧 |
-| map.generation.starterStones.randomMinY | 随机辉石最低 y | 5 | 格 | 是 | 资源、探索 | 防止贴边 |
-| map.generation.starterStones.randomMaxYMargin | 随机辉石最高 y 边距 | 10 | 格 | 是 | 资源、探索 | 防止贴边 |
+| map.generation.starterStones.randomMinX | 随机辉石最低 x / 左侧安全边距 | 6 | 格 | 是 | 资源、探索 | 实际 x 范围为 `[randomMinX, width - randomMaxXMargin)` |
+| map.generation.starterStones.randomMaxXMargin | 随机辉石右侧安全边距 | 12 | 格 | 是 | 资源、探索 | 不是随机范围长度；调低会让辉石更靠近右边缘 / 终点 |
+| map.generation.starterStones.randomMinY | 随机辉石最低 y / 上侧安全边距 | 5 | 格 | 是 | 资源、探索 | 实际 y 范围为 `[randomMinY, height - randomMaxYMargin)` |
+| map.generation.starterStones.randomMaxYMargin | 随机辉石下侧安全边距 | 10 | 格 | 是 | 资源、探索 | 不是随机范围长度；调低会让辉石更靠近下边缘 |
 | map.generation.starterStones.randomValue | 随机辉石数量 | 1 | 个 | 是 | 资源 | 单点默认补给 |
 | player.speed | 玩家移动速度 | 4.2 | 格/秒 | 是 | 玩家移动、探索、事件 | 过高会削弱夜晚压力 |
 | player.initialFacing | 初始朝向 | `{ x: 1, y: 0 }` | 方向向量 | 是 | Space 面前互动 | 改动会影响开局互动目标 |
@@ -187,7 +187,7 @@
 | ui.assistHintDistances.goal | 终点辅助提示距离 | 2.4 | 格 | 是 | HUD 辅助信息 | 提醒完成目标 |
 | ui.worldLabelDistances.stone | 世界画面辉石标签显示距离 | 2.2 | 格 | 是 | 世界渲染、标签 | 只影响提示可见性，不改变拾取或互动 |
 | message.ttlSeconds | Toast 消息显示时长 | 2.2 | 秒 | 是 | UI 消息 | 过短会读不清 |
-| message.initialText | 新开局初始提示 | `v1.2-config-prep...` | 文本 | 是 | UI 消息 | 只影响文案 |
+| message.initialText | 新开局初始提示 | `v1.3-dev-balance-console...` | 文本 | 是 | UI 消息 | 只影响文案 |
 | app.maxFrameDeltaSeconds | 单帧最大模拟时间 | 0.05 | 秒 | 否 | 主循环 | 防止切后台后一次性推进过多 |
 
 ## 当前仍未迁入 GameConfig 的内容
