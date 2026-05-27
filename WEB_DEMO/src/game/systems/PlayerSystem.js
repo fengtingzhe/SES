@@ -9,9 +9,18 @@ export class PlayerSystem {
 
   update(state, dt) {
     const raw = this.inputManager.getMovementVector();
-    this.updateInvertedControlState(state, dt);
 
-    if (!raw.x && !raw.y) return false;
+    if (!raw.x && !raw.y) {
+      state.player.invertedMovementLocked = false;
+      this.updateInvertedControlState(state, dt);
+      return false;
+    }
+
+    if (!state.player.invertedMovementLocked) {
+      state.player.controlInverted = this.isInverted(state);
+      state.player.invertedExitTimer = 0;
+      state.player.invertedMovementLocked = true;
+    }
 
     this.updateFacing(state.player, raw);
 

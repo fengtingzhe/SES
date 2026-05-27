@@ -62,7 +62,8 @@ export function createInitialState() {
       facing: { ...GameConfig.player.initialFacing },
       invulnerable: 0,
       controlInverted: false,
-      invertedExitTimer: 0
+      invertedExitTimer: 0,
+      invertedMovementLocked: false
     },
     resources: {
       stone: GameConfig.resource.initialStone
