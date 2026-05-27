@@ -38,7 +38,8 @@ export class HudRenderer {
         ? '黄昏'
         : '白天';
     const phaseClass = `phase-status--${state.time.phase}`;
-    this.renderPhaseBanner(phaseText, phaseClass);
+    const weatherClass = `weather-status--${state.weather.current ?? 'clear'}`;
+    this.renderPhaseBanner(phaseText, phaseClass, weatherText, weatherClass);
 
     this.hudElement.innerHTML = `
       <h1>${state.version}</h1>
@@ -97,13 +98,19 @@ export class HudRenderer {
     return { available, cooling };
   }
 
-  renderPhaseBanner(phaseText, phaseClass) {
+  renderPhaseBanner(phaseText, phaseClass, weatherText, weatherClass) {
     if (!this.phaseBannerElement) return;
 
     this.phaseBannerElement.className = `phase-banner ${phaseClass}`;
     this.phaseBannerElement.innerHTML = `
-      <span class="phase-icon" aria-hidden="true"></span>
-      <span class="phase-banner__text">阶段：<b>${phaseText}</b></span>
+      <span class="phase-banner__row">
+        <span class="phase-icon" aria-hidden="true"></span>
+        <span class="phase-banner__text">阶段：<b>${phaseText}</b></span>
+      </span>
+      <span class="phase-banner__row phase-banner__row--weather ${weatherClass}">
+        <span class="weather-icon" aria-hidden="true"></span>
+        <span class="phase-banner__text">天气：<b>${weatherText}</b></span>
+      </span>
     `;
   }
 
