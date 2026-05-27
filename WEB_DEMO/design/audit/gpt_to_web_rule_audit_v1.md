@@ -1,5 +1,62 @@
 # GPT_DEMO -> WEB_DEMO 规则审计 v1
 
+## v1.2-config-prep 配置化准备记录
+
+### 任务目标
+
+本轮目标是整理 `WEB_DEMO` 内部配置结构，为后续 JSON / CSV 或其他外部配置拆分做准备。它不属于 GPT_DEMO 玩法迁移任务，不新增玩法系统，也不修改 GPT_DEMO。
+
+### 修改位置
+
+- `WEB_DEMO/src/game/config/GameConfig.js`
+- `WEB_DEMO/src/game/world/MapGenerator.js`
+- `WEB_DEMO/src/game/state/createInitialState.js`
+- `WEB_DEMO/src/game/rules/jobCosts.js`
+- `WEB_DEMO/src/game/rules/jobDurations.js`
+- `WEB_DEMO/src/game/systems/InteractionSystem.js`
+- `WEB_DEMO/src/game/systems/ResourceSystem.js`
+- `WEB_DEMO/src/game/systems/WorkerSystem.js`
+- `WEB_DEMO/src/game/systems/MonsterSystem.js`
+- `WEB_DEMO/src/game/systems/SpecialEventSystem.js`
+- `WEB_DEMO/src/game/systems/WeatherSystem.js`
+- `WEB_DEMO/src/game/systems/WeatherEventSystem.js`
+- `WEB_DEMO/src/app/GameApp.js`
+- `WEB_DEMO/src/presentation/renderers/HudRenderer.js`
+- `WEB_DEMO/src/presentation/renderers/WorldRenderer.js`
+- `WEB_DEMO/docs/config_reference.md`
+- `WEB_DEMO/docs/changelog.md`
+- `WEB_DEMO/docs/acceptance_tests.md`
+- `WEB_DEMO/docs/known_issues.md`
+- `WEB_DEMO/design/audit/gpt_to_web_rule_audit_v1.md`
+
+### 保持一致的规则
+
+- 不改变地图尺寸、起点、终点、初始辉石、初始工人、昼夜节奏、黑影节奏、任务成本、任务时长、矿山产出、围墙 HP、弓箭手攻击参数、天气概率、特殊事件奖励等默认值。
+- 不改变自然辉石自动拾取、临时辉石 Space 拾回、工人派工 / reserved、矿山 occupied / reserved、流民转职、围墙防御、弓箭手夜晚攻击、特殊事件和终点目标等既有体验。
+- 不引入外部配置读取，因此运行路径仍与 v1.1-weather-event 保持一致。
+
+### 本轮配置化内容
+
+- GameConfig 重新按系统分组，并用中文注释标注用途、单位、影响范围和调参风险。
+- 地图生成中的主路、分支、河流、特殊地点、起点区域、开局辉石等参数迁入 GameConfig。
+- 成本、时长、数量、距离、概率、冷却、奖励、产出、UI 辅助距离、消息时长等明显魔法数字迁入 GameConfig。
+- 任务成本和任务时长继续通过 `jobCosts.js` / `jobDurations.js` 暴露，但底层默认值改为读取 GameConfig，保留现有调用边界。
+- 新增 `config_reference.md`，记录当前字段路径和后续拆表边界。
+
+### 有意保留在代码中的内容
+
+- 互动优先级表和黑影目标优先级表暂时保留在规则模块中，避免本轮改变判定顺序。
+- `WorldRenderer.js` 中局部绘制像素、颜色、字体和标签偏移暂不迁移，避免配置中心膨胀为视觉主题文件。
+- CSS 中 HUD、顶部阶段天气条、Toast 等样式值暂不迁移，后续 UI 主题化任务再统一处理。
+- `TileType`、通行集合和实体枚举仍作为程序常量，不作为策划调参字段。
+
+### 待确认问题
+
+- 后续拆 JSON / CSV 时，GameConfig 是整体拆分，还是按 map / economy / combat / event / ui 等域拆分。
+- 策划参数是否需要 schema、单位校验、范围校验和默认值回退。
+- 地图生成参数是否进入正式关卡表，还是继续作为随机生成器默认参数。
+- 优先级表是否开放给策划调参，或继续作为核心规则常量由程序维护。
+
 ## v1.1-weather-event 设计与实现记录
 
 ### 新增系统

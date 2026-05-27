@@ -1,5 +1,41 @@
 # Acceptance Tests
 
+## v1.2-config-prep GameConfig 整理与配置化准备验收
+
+测试名称：WEB_DEMO v1.2-config-prep GameConfig 整理与配置化准备
+
+前置条件：
+- 已安装 Node.js。
+- 当前任务只做配置整理，不新增玩法系统。
+- 本轮不拆 JSON / CSV，不接入外部配置读取，不修改 GPT_DEMO。
+
+操作步骤：
+1. 进入 `WEB_DEMO` 目录。
+2. 执行 `npm install`（如依赖已存在可跳过）。
+3. 执行 `npm run dev`。
+4. 打开浏览器访问 Vite 输出的本地地址。
+5. 确认页面标题、HUD 版本或初始提示显示 `WEB_DEMO v1.2-config-prep`。
+6. 打开 `WEB_DEMO/src/game/config/GameConfig.js`，确认配置按系统分组，而不是零散堆叠。
+7. 检查 GameConfig 中地图、玩家、资源、工人、任务、人口、矿山、围墙、弓箭手、黑影、昼夜、天气、事件、交互、视野、镜头、UI、消息等模块均有中文注释。
+8. 检查任务成本和任务时长从 `jobCosts.js`、`jobDurations.js` 统一读取 GameConfig。
+9. 检查地图生成中的路径、河流、分支、特殊地点、起点区域和开局辉石等明显魔法数字已迁入 GameConfig。
+10. 检查资源、矿山产出、黑影移动阈值、天气 / 事件历史长度、HUD 显示精度、辅助提示距离、消息时长等明显魔法数字已迁入 GameConfig。
+11. 检查 `WEB_DEMO/docs/config_reference.md` 是否存在。
+12. 检查 `config_reference.md` 是否包含字段路径、中文说明、默认值、单位、是否策划参数、影响系统、注意事项七列。
+13. 检查 `config_reference.md` 是否记录当前暂未迁移的渲染像素、CSS 样式、优先级表和地块枚举等内容及原因。
+14. 回归基础体验：移动、视野揭示、Space 互动、辉石拾取 / 放置、工人派工、昼夜、黑影、矿山、流民、围墙、弓箭手、特殊事件和终点目标应保持既有规则。
+15. 检查 `GPT_DEMO/**` 未被修改。
+16. 检查源码中没有新增 JSON / CSV 读取、配置编辑器、存档或移动端适配实现。
+
+预期结果：
+1. 工程可以正常启动，浏览器控制台无阻塞性 JavaScript 报错。
+2. GameConfig 成为当前唯一配置中心，结构清晰且中文注释充分。
+3. 常用策划参数与程序常量在 GameConfig 内有明确边界说明。
+4. 明显魔法数字已迁入 GameConfig，后续可进一步拆表。
+5. `config_reference.md` 覆盖主要配置模块，并记录暂不迁移内容。
+6. 默认数值和既有玩法规则不发生变化。
+7. 本轮没有新增玩法系统，没有外部配置读取，没有修改 GPT_DEMO。
+
 ## v1.1-weather-event 天气系统与条件事件触发框架验收
 
 测试名称：WEB_DEMO v1.1-weather-event 天气系统与条件事件触发框架

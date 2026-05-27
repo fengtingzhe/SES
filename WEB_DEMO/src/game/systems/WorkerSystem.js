@@ -27,8 +27,8 @@ export class WorkerSystem {
         worker.progress += dt;
         if (worker.progress >= GameConfig.mine.productionSeconds) {
           worker.progress = 0;
-          this.resourceSystem.dropStoneNear(state, worker.x, worker.y, 1);
-          this.showMessage('矿山产出 1 个辉石。');
+          this.resourceSystem.dropStoneNear(state, worker.x, worker.y, GameConfig.mine.outputStone);
+          this.showMessage(`矿山产出 ${GameConfig.mine.outputStone} 个辉石。`);
         }
         continue;
       }
@@ -178,7 +178,7 @@ export class WorkerSystem {
     const target = worker.path[worker.pathIndex];
     const d = distance(worker, target);
 
-    if (d > 0.05) {
+    if (d > GameConfig.worker.arrivalDistance) {
       worker.x += ((target.x - worker.x) / d) * GameConfig.worker.speed * dt;
       worker.y += ((target.y - worker.y) / d) * GameConfig.worker.speed * dt;
     } else {
@@ -259,8 +259,8 @@ export class WorkerSystem {
 
     if (type === JobType.CHOP) {
       map.blank(tx, ty);
-      this.resourceSystem.dropStoneNear(state, tx, ty, 1);
-      this.showMessage('树障被清开，掉落 1 个辉石。');
+      this.resourceSystem.dropStoneNear(state, tx, ty, GameConfig.resource.treeChopDropStone);
+      this.showMessage(`树障被清开，掉落 ${GameConfig.resource.treeChopDropStone} 个辉石。`);
       this.returnHome(state, worker);
       return;
     }
@@ -428,9 +428,10 @@ export class WorkerSystem {
 
   createCareerSitesNear(state, x, y) {
     const map = state.world.map;
+    const generation = GameConfig.map.generation.startArea;
     const sites = [
-      { x: x + 1, y: y + 2, type: TileType.WORKER_HUT },
-      { x: x + 3, y: y + 2, type: TileType.ARCHER_CAMP }
+      { x: x + generation.workerHutOffset.x, y: y + generation.workerHutOffset.y, type: TileType.WORKER_HUT },
+      { x: x + generation.archerCampOffset.x, y: y + generation.archerCampOffset.y, type: TileType.ARCHER_CAMP }
     ];
 
     for (const site of sites) {
@@ -442,10 +443,8 @@ export class WorkerSystem {
 
   createWallBasesNear(state, x, y) {
     const map = state.world.map;
-    const bases = [
-      { x: x + 4, y: y + 1 },
-      { x: x - 2, y: y + 1 }
-    ];
+    const bases = GameConfig.map.generation.startArea.wallBaseOffsets
+      .map(offset => ({ x: x + offset.x, y: y + offset.y }));
 
     for (const base of bases) {
       if (map.cell(base.x, base.y)?.type === TileType.GROUND) {

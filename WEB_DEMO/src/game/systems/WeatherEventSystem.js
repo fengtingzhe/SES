@@ -44,7 +44,7 @@ export class WeatherEventSystem {
       state.weatherEvents.lastTriggeredDay[rule.id] = state.time.day;
       state.weatherEvents.lastEvent = record;
       state.weatherEvents.history.unshift(record);
-      state.weatherEvents.history = state.weatherEvents.history.slice(0, 8);
+      state.weatherEvents.history = state.weatherEvents.history.slice(0, GameConfig.weatherEvents.historyLimit);
       this.showMessage(result.message);
       return;
     }

@@ -25,11 +25,11 @@ export function createInitialState() {
         lastResult: null
       }
     },
-    nextEntityId: 3,
+    nextEntityId: GameConfig.entity.initialNextEntityId,
     monsterSpawn: {
       spawnedThisNight: 0,
       cooldown: 0,
-      nextId: 1
+      nextId: GameConfig.entity.initialMonsterNextId
     },
     weather: {
       current: null,
@@ -52,10 +52,9 @@ export function createInitialState() {
       phase: 'day',
       wasNight: false
     },
-    workers: [
-      createWorker(1, GameConfig.map.start.x, GameConfig.map.start.y - 1, startHome.id),
-      createWorker(2, GameConfig.map.start.x, GameConfig.map.start.y + 1, startHome.id)
-    ],
+    workers: GameConfig.population.initialWorkerOffsets.map((offset, index) =>
+      createWorker(index + 1, GameConfig.map.start.x + offset.x, GameConfig.map.start.y + offset.y, startHome.id)
+    ),
     player: {
       x: GameConfig.map.start.x,
       y: GameConfig.map.start.y,
@@ -77,12 +76,12 @@ export function createInitialState() {
       y: 0
     },
     ui: {
-      showMiniMap: true
+      showMiniMap: GameConfig.ui.initialShowMiniMap
     },
     hover: null,
     message: {
-      text: 'v1.1-weather-event：天气与条件事件框架测试中。',
-      ttl: GameConfig.messageSeconds
+      text: GameConfig.message.initialText,
+      ttl: GameConfig.message.ttlSeconds
     }
   };
 }

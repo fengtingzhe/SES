@@ -91,7 +91,7 @@ export class GameApp {
   showMessage(text) {
     this.state.message = {
       text,
-      ttl: GameConfig.messageSeconds
+      ttl: GameConfig.message.ttlSeconds
     };
   }
 
@@ -102,7 +102,7 @@ export class GameApp {
   }
 
   loop(now) {
-    const dt = Math.min(0.05, (now - this.lastFrame) / 1000);
+    const dt = Math.min(GameConfig.app.maxFrameDeltaSeconds, (now - this.lastFrame) / 1000);
     this.lastFrame = now;
     this.update(dt);
     this.canvasRenderer.render(this.state);

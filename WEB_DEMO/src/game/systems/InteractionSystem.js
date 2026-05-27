@@ -1,4 +1,5 @@
 import { distance, roundedGridPoint } from '../utils/grid.js';
+import { GameConfig } from '../config/GameConfig.js';
 import { TileType } from '../world/TileMap.js';
 import { InteractionAction, InteractionPriority } from '../rules/interactionPriority.js';
 
@@ -20,24 +21,30 @@ export class InteractionSystem {
     }
 
     if (tile.type === TileType.STONE && tile.placed) {
-      return this.createInfo(state, x, y, InteractionAction.PICK_PLACED_STONE, `拾回辉石 +${tile.value || 1}`);
+      return this.createInfo(
+        state,
+        x,
+        y,
+        InteractionAction.PICK_PLACED_STONE,
+        `拾回辉石 +${tile.value || GameConfig.resource.defaultStoneValue}`
+      );
     }
 
     if (tile.type === TileType.REFUGEE_FIRE) {
       const refugee = tile.refugee ?? { available: false, cooldown: 0 };
       if (refugee.available) {
-        return this.createInfo(state, x, y, InteractionAction.RECRUIT_REFUGEE, '招募流民 1');
+        return this.createInfo(state, x, y, InteractionAction.RECRUIT_REFUGEE, `招募流民 ${GameConfig.population.recruitCost}`);
       }
       const cooldown = Math.ceil(refugee.cooldown || 0);
       return this.createInfo(state, x, y, InteractionAction.REFUGEE_COOLDOWN, cooldown > 0 ? `冷却 ${cooldown}s` : '空火堆');
     }
 
     if (tile.type === TileType.WORKER_HUT) {
-      return this.createInfo(state, x, y, InteractionAction.CONVERT_WORKER, '流民转工人 1');
+      return this.createInfo(state, x, y, InteractionAction.CONVERT_WORKER, `流民转工人 ${GameConfig.population.conversionCost}`);
     }
 
     if (tile.type === TileType.ARCHER_CAMP) {
-      return this.createInfo(state, x, y, InteractionAction.CONVERT_ARCHER, '流民转弓箭手 1');
+      return this.createInfo(state, x, y, InteractionAction.CONVERT_ARCHER, `流民转弓箭手 ${GameConfig.population.conversionCost}`);
     }
 
     if (tile.type === TileType.MINE) {
@@ -51,7 +58,7 @@ export class InteractionSystem {
     }
 
     if (tile.type === TileType.WALL_BASE) {
-      const label = tile.reserved ? '建墙中' : '建造围墙 2';
+      const label = tile.reserved ? '建墙中' : `建造围墙 ${GameConfig.job.costs.wall}`;
       return this.createInfo(
         state,
         x,
@@ -66,15 +73,15 @@ export class InteractionSystem {
     }
 
     if (tile.job === InteractionAction.CHOP) {
-      return this.createInfo(state, x, y, InteractionAction.CHOP, '砍树 1');
+      return this.createInfo(state, x, y, InteractionAction.CHOP, `砍树 ${GameConfig.job.costs.chop}`);
     }
 
     if (tile.job === InteractionAction.REPAIR) {
-      return this.createInfo(state, x, y, InteractionAction.REPAIR, '修桥 2');
+      return this.createInfo(state, x, y, InteractionAction.REPAIR, `修桥 ${GameConfig.job.costs.repair}`);
     }
 
     if (tile.job === InteractionAction.CAMP) {
-      return this.createInfo(state, x, y, InteractionAction.CAMP, '点亮旧火塘 2');
+      return this.createInfo(state, x, y, InteractionAction.CAMP, `点亮旧火塘 ${GameConfig.job.costs.camp}`);
     }
 
     return null;
@@ -102,10 +109,11 @@ export class InteractionSystem {
     if (front) return front;
 
     const candidates = [];
-    for (let y = playerGrid.y - 2; y <= playerGrid.y + 2; y += 1) {
-      for (let x = playerGrid.x - 2; x <= playerGrid.x + 2; x += 1) {
+    const scanRadius = GameConfig.interaction.scanRadius;
+    for (let y = playerGrid.y - scanRadius; y <= playerGrid.y + scanRadius; y += 1) {
+      for (let x = playerGrid.x - scanRadius; x <= playerGrid.x + scanRadius; x += 1) {
         const info = this.getInfoAt(state, x, y);
-        if (info && info.distance <= 1.7) {
+        if (info && info.distance <= GameConfig.interaction.maxDistance) {
           candidates.push(info);
         }
       }

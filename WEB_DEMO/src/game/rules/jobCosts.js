@@ -1,3 +1,5 @@
+import { GameConfig } from '../config/GameConfig.js';
+
 export const JobType = {
   CHOP: 'chop',
   REPAIR: 'repair',
@@ -7,9 +9,9 @@ export const JobType = {
 };
 
 export const JobCosts = {
-  [JobType.CHOP]: 1,
-  [JobType.REPAIR]: 2,
-  [JobType.CAMP]: 2,
-  [JobType.MINE]: 0,
-  [JobType.WALL]: 2
+  [JobType.CHOP]: GameConfig.job.costs.chop,
+  [JobType.REPAIR]: GameConfig.job.costs.repair,
+  [JobType.CAMP]: GameConfig.job.costs.camp,
+  [JobType.MINE]: GameConfig.job.costs.mine,
+  [JobType.WALL]: GameConfig.job.costs.wall
 };

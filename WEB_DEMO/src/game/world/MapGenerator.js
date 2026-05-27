@@ -5,9 +5,11 @@ import { TileMap, TileType } from './TileMap.js';
 import { findPath } from './pathfinding.js';
 
 export class MapGenerator {
-  constructor(config = GameConfig.map) {
-    this.config = config;
-    this.random = createRandom(config.seed);
+  constructor(config = GameConfig.map, height = GameConfig.map.height) {
+    this.config = typeof config === 'number'
+      ? { ...GameConfig.map, width: config, height }
+      : config;
+    this.random = createRandom(this.config.seed);
   }
 
   generate() {
@@ -15,8 +17,9 @@ export class MapGenerator {
     const path = this.createMainPath(map);
 
     this.createBranches(map, path);
-    this.createRiverSkeleton(map, path, 22);
-    this.createRiverSkeleton(map, path, 45);
+    for (const baseX of this.config.generation.rivers.baseXs) {
+      this.createRiverSkeleton(map, path, baseX);
+    }
     this.placeSpecialSites(map, path);
     this.createStartArea(map);
     this.placeWorkSites(map, path);
@@ -29,18 +32,21 @@ export class MapGenerator {
   }
 
   placeSpecialSites(map, path) {
-    this.paintInvertedForest(map, path, 10, -5);
-    this.placeNearPath(map, path, 27, -5, TileType.FOX_WEDDING, {
+    const sites = this.config.generation.specialSites;
+    for (const site of sites.invertedForests) {
+      this.paintInvertedForest(map, path, site.pathIndex, site.offsetY);
+    }
+    this.placeNearPath(map, path, sites.foxWedding.pathIndex, sites.foxWedding.offsetY, TileType.FOX_WEDDING, {
       event: { type: 'foxWedding', completed: false }
     });
-    this.paintInvertedForest(map, path, 50, -4);
   }
 
   paintInvertedForest(map, path, index, offsetY) {
     const anchor = path[Math.min(index, path.length - 1)];
+    const placement = this.config.generation.placement;
     const center = {
       x: anchor.x,
-      y: clamp(anchor.y + offsetY, 4, this.config.height - 5)
+      y: clamp(anchor.y + offsetY, placement.minY, this.config.height - placement.maxYMargin)
     };
     const radius = GameConfig.events.invertedForest.radius;
 
@@ -48,7 +54,7 @@ export class MapGenerator {
       for (let x = center.x - radius; x <= center.x + radius; x += 1) {
         if (!map.cell(x, y)) continue;
         const d = Math.hypot(x - center.x, y - center.y);
-        if (d <= radius + 0.3) {
+        if (d <= radius + GameConfig.events.invertedForest.edgePadding) {
           map.setTile(x, y, TileType.INVERTED_FOREST, { invertLabel: false, regionTag: 'invertedForest' });
         }
       }
@@ -62,22 +68,27 @@ export class MapGenerator {
 
   createMainPath(map) {
     const { start, goal, height } = this.config;
+    const config = this.config.generation.path;
     const path = [];
     let y = start.y;
 
     for (let x = start.x; x <= goal.x; x += 1) {
-      if (x > 8 && x < goal.x - 2 && x % 3 === 0) {
-        y = clamp(y + randomInt(this.random, 3) - 1, 8, height - 9);
+      if (x > config.wanderStartX && x < goal.x - config.goalPadding && x % config.wanderEvery === 0) {
+        y = clamp(
+          y + randomInt(this.random, config.yRandomChoices) - config.yDeltaOffset,
+          config.minY,
+          height - config.maxYMargin
+        );
       }
 
       path.push({ x, y });
-      for (let dy = -1; dy <= 1; dy += 1) {
+      for (let dy = -config.laneRadius; dy <= config.laneRadius; dy += 1) {
         map.blank(x, y + dy);
         this.setRegionTag(map, x, y + dy, 'forest');
       }
 
-      if (x % 6 === 0) {
-        const sideY = y + (this.random() < 0.5 ? 2 : -2);
+      if (x % config.sideEvery === 0) {
+        const sideY = y + (this.random() < config.sideChance ? config.sideOffset : -config.sideOffset);
         map.blank(x, sideY);
         this.setRegionTag(map, x, sideY, 'forest');
       }
@@ -87,21 +98,30 @@ export class MapGenerator {
   }
 
   createBranches(map, path) {
-    for (let i = 0; i < 8; i += 1) {
-      const anchor = path[8 + randomInt(this.random, path.length - 16)];
+    const config = this.config.generation.branches;
+    for (let i = 0; i < config.count; i += 1) {
+      const anchor = path[config.anchorStart + randomInt(this.random, path.length - config.anchorEndPadding)];
       let x = anchor.x;
       let y = anchor.y;
-      const dir = this.random() < 0.5 ? -1 : 1;
-      const length = 4 + randomInt(this.random, 8);
+      const dir = this.random() < config.directionChance ? -1 : 1;
+      const length = config.minLength + randomInt(this.random, config.lengthRandomChoices);
 
       for (let n = 0; n < length; n += 1) {
-        x = clamp(x + randomInt(this.random, 3) - 1, 4, this.config.width - 5);
-        y = clamp(y + dir * (this.random() < 0.75 ? 1 : 0), 5, this.config.height - 6);
+        x = clamp(
+          x + randomInt(this.random, config.xRandomChoices) - config.xDeltaOffset,
+          config.minX,
+          this.config.width - config.maxXMargin
+        );
+        y = clamp(
+          y + dir * (this.random() < config.yStepChance ? 1 : 0),
+          config.minY,
+          this.config.height - config.maxYMargin
+        );
         map.blank(x, y);
         this.setRegionTag(map, x, y, 'forest');
-        map.blank(x + 1, y);
-        this.setRegionTag(map, x + 1, y, 'forest');
-        if (n % 3 === 0) {
+        map.blank(x + config.widthExtraX, y);
+        this.setRegionTag(map, x + config.widthExtraX, y, 'forest');
+        if (n % config.extraEvery === 0) {
           map.blank(x, y + dir);
           this.setRegionTag(map, x, y + dir, 'forest');
         }
@@ -110,10 +130,11 @@ export class MapGenerator {
   }
 
   createRiverSkeleton(map, path, baseX) {
-    const rx = baseX + randomInt(this.random, 3);
+    const config = this.config.generation.rivers;
+    const rx = baseX + randomInt(this.random, config.xRandomChoices);
     const crossing = path.find(point => point.x === rx) ?? path[Math.floor(path.length / 2)];
 
-    for (let y = 3; y < this.config.height - 3; y += 1) {
+    for (let y = config.minY; y < this.config.height - config.maxYMargin; y += 1) {
       map.setTile(rx, y, TileType.WATER, { regionTag: 'river' });
     }
 
@@ -122,32 +143,39 @@ export class MapGenerator {
 
   createStartArea(map) {
     const { start } = this.config;
-    for (let y = start.y - 4; y <= start.y + 4; y += 1) {
-      for (let x = start.x - 3; x <= start.x + 5; x += 1) {
+    const config = this.config.generation.startArea;
+    for (let y = start.y + config.offsetMin.y; y <= start.y + config.offsetMax.y; y += 1) {
+      for (let x = start.x + config.offsetMin.x; x <= start.x + config.offsetMax.x; x += 1) {
         map.blank(x, y);
         this.setRegionTag(map, x, y, 'camp');
       }
     }
     map.setTile(start.x, start.y, TileType.VILLAGE, { regionTag: 'camp' });
-    map.setTile(start.x + 2, start.y, TileType.MINE, { mine: { workerId: null }, regionTag: 'camp' });
+    map.setTile(
+      start.x + config.mineOffset.x,
+      start.y + config.mineOffset.y,
+      TileType.MINE,
+      { mine: { workerId: null }, regionTag: 'camp' }
+    );
     this.placeCareerSites(map, start.x, start.y);
     this.placeWallBases(map, start.x, start.y);
   }
 
   placeCareerSites(map, x, y) {
-    if (map.cell(x + 1, y + 2)?.type === TileType.GROUND) {
-      map.setTile(x + 1, y + 2, TileType.WORKER_HUT, { regionTag: 'camp' });
+    const config = this.config.generation.startArea;
+    const workerHut = { x: x + config.workerHutOffset.x, y: y + config.workerHutOffset.y };
+    const archerCamp = { x: x + config.archerCampOffset.x, y: y + config.archerCampOffset.y };
+    if (map.cell(workerHut.x, workerHut.y)?.type === TileType.GROUND) {
+      map.setTile(workerHut.x, workerHut.y, TileType.WORKER_HUT, { regionTag: 'camp' });
     }
-    if (map.cell(x + 3, y + 2)?.type === TileType.GROUND) {
-      map.setTile(x + 3, y + 2, TileType.ARCHER_CAMP, { regionTag: 'camp' });
+    if (map.cell(archerCamp.x, archerCamp.y)?.type === TileType.GROUND) {
+      map.setTile(archerCamp.x, archerCamp.y, TileType.ARCHER_CAMP, { regionTag: 'camp' });
     }
   }
 
   placeWallBases(map, x, y) {
-    const bases = [
-      { x: x + 4, y: y + 1 },
-      { x: x - 2, y: y + 1 }
-    ];
+    const bases = this.config.generation.startArea.wallBaseOffsets
+      .map(offset => ({ x: x + offset.x, y: y + offset.y }));
 
     for (const base of bases) {
       if (map.cell(base.x, base.y)?.type === TileType.GROUND) {
@@ -158,11 +186,9 @@ export class MapGenerator {
 
   placeWorkSites(map, path) {
     const { start } = this.config;
-    const treeSpots = [
-      { x: start.x + 3, y: start.y - 2 },
-      { x: start.x + 4, y: start.y - 2 },
-      { x: start.x + 4, y: start.y + 2 }
-    ];
+    const config = this.config.generation;
+    const treeSpots = config.startArea.treeOffsets
+      .map(offset => ({ x: start.x + offset.x, y: start.y + offset.y }));
 
     for (const spot of treeSpots) {
       if (map.cell(spot.x, spot.y)) {
@@ -170,8 +196,12 @@ export class MapGenerator {
       }
     }
 
-    const campAnchor = path[Math.min(31, path.length - 1)];
-    const campY = clamp(campAnchor.y + 2, 4, this.config.height - 5);
+    const campAnchor = path[Math.min(config.specialSites.oldFirepit.pathIndex, path.length - 1)];
+    const campY = clamp(
+      campAnchor.y + config.specialSites.oldFirepit.offsetY,
+      config.placement.minY,
+      this.config.height - config.placement.maxYMargin
+    );
     const campSpot = this.findNearestGround(map, campAnchor.x, campY);
     if (campSpot) {
       map.setTile(campSpot.x, campSpot.y, TileType.OLD_FIREPIT, { job: 'camp', regionTag: 'forest' });
@@ -179,24 +209,24 @@ export class MapGenerator {
   }
 
   placeFogGates(map, path) {
-    this.placeNearPath(map, path, 36, -4, TileType.FOG);
-    this.placeNearPath(map, path, 48, 5, TileType.FOG);
+    for (const gate of this.config.generation.specialSites.fogGates) {
+      this.placeNearPath(map, path, gate.pathIndex, gate.offsetY, TileType.FOG);
+    }
   }
 
   placeRefugeeFires(map, path) {
-    this.placeNearPath(map, path, 16, 4, TileType.REFUGEE_FIRE, {
-      refugee: { available: true, cooldown: 0 },
-      regionTag: 'forest'
-    }, true);
-    this.placeNearPath(map, path, 30, 4, TileType.REFUGEE_FIRE, {
-      refugee: { available: true, cooldown: 0 },
-      regionTag: 'forest'
-    }, true);
+    for (const fire of this.config.generation.specialSites.refugeeFires) {
+      this.placeNearPath(map, path, fire.pathIndex, fire.offsetY, TileType.REFUGEE_FIRE, {
+        refugee: { available: true, cooldown: 0 },
+        regionTag: 'forest'
+      }, fire.requireStartPath);
+    }
   }
 
   placeNearPath(map, path, index, offsetY, type, extra = {}, requireStartPath = false) {
+    const placement = this.config.generation.placement;
     const anchor = path[Math.min(index, path.length - 1)];
-    const y = clamp(anchor.y + offsetY, 4, this.config.height - 5);
+    const y = clamp(anchor.y + offsetY, placement.minY, this.config.height - placement.maxYMargin);
     const spot = this.findNearestGround(
       map,
       anchor.x,
@@ -207,7 +237,8 @@ export class MapGenerator {
   }
 
   findNearestGround(map, x, y, reachableFrom = null) {
-    const maxRadius = reachableFrom ? 12 : 6;
+    const placement = this.config.generation.placement;
+    const maxRadius = reachableFrom ? placement.reachableSearchRadius : placement.normalSearchRadius;
     for (let radius = 0; radius <= maxRadius; radius += 1) {
       for (let yy = y - radius; yy <= y + radius; yy += 1) {
         for (let xx = x - radius; xx <= x + radius; xx += 1) {
@@ -228,22 +259,30 @@ export class MapGenerator {
 
   placeStarterStones(map, path) {
     const { start } = this.config;
-    map.setStone(start.x + 1, start.y, 1);
+    const config = this.config.generation.starterStones;
+    map.setStone(
+      start.x + config.firstOffset.x,
+      start.y + config.firstOffset.y,
+      GameConfig.resource.defaultStoneValue
+    );
 
-    const fixed = [10, 15, 24, 34, 43, 52];
-    fixed.forEach((index, offsetIndex) => {
+    config.fixedPathIndexes.forEach((index, offsetIndex) => {
       const p = path[Math.min(index, path.length - 1)];
-      const y = clamp(p.y + (offsetIndex % 2 === 0 ? -2 : 2), 4, this.config.height - 5);
+      const y = clamp(
+        p.y + (offsetIndex % 2 === 0 ? -config.fixedSideOffset : config.fixedSideOffset),
+        this.config.generation.placement.minY,
+        this.config.height - this.config.generation.placement.maxYMargin
+      );
       if (map.cell(p.x, y)?.type === TileType.GROUND) {
-        map.setStone(p.x, y, offsetIndex === 0 ? 2 : 1);
+        map.setStone(p.x, y, offsetIndex === 0 ? config.firstFixedValue : config.fixedValue);
       }
     });
 
-    for (let i = 0; i < 16; i += 1) {
-      const x = 6 + randomInt(this.random, this.config.width - 12);
-      const y = 5 + randomInt(this.random, this.config.height - 10);
+    for (let i = 0; i < config.randomCount; i += 1) {
+      const x = config.randomMinX + randomInt(this.random, this.config.width - config.randomMaxXMargin);
+      const y = config.randomMinY + randomInt(this.random, this.config.height - config.randomMaxYMargin);
       if (map.cell(x, y)?.type === TileType.GROUND) {
-        map.setStone(x, y, 1);
+        map.setStone(x, y, config.randomValue);
       }
     }
   }

@@ -1,4 +1,5 @@
 import { GameConfig } from '../../game/config/GameConfig.js';
+import { JobDurations } from '../../game/rules/jobDurations.js';
 import { directionLabel, distance } from '../../game/utils/grid.js';
 import { TileType } from '../../game/world/TileMap.js';
 
@@ -94,11 +95,11 @@ export class WorldRenderer {
     );
 
     if (tile.type === TileType.STONE) {
-      this.drawStone(context, screen, tile.value || 1);
+      this.drawStone(context, screen, tile.value || GameConfig.resource.defaultStoneValue);
     }
 
     if (tile.visible) {
-      if (tile.type === TileType.STONE && distance(state.player, { x, y }) <= 2.2) {
+      if (tile.type === TileType.STONE && distance(state.player, { x, y }) <= GameConfig.ui.worldLabelDistances.stone) {
         this.label(context, screen.x, screen.y - 24, tile.placed ? '临时辉石：Space 拾回' : '辉石：靠近拾取');
       }
       if (tile.type === TileType.FOREST && tile.job === 'chop') {
@@ -274,7 +275,8 @@ export class WorldRenderer {
   }
 
   workerWorkLabel(worker) {
-    const remaining = Math.max(1, Math.ceil(GameConfig.worker.workDuration - worker.progress));
+    const duration = JobDurations[worker.job?.type] ?? GameConfig.worker.workDuration;
+    const remaining = Math.max(1, Math.ceil(duration - worker.progress));
     const labels = {
       chop: '砍树',
       repair: '修桥',

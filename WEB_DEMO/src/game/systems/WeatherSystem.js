@@ -53,7 +53,7 @@ export class WeatherSystem {
       type,
       duration
     });
-    state.weather.history = state.weather.history.slice(0, 6);
+    state.weather.history = state.weather.history.slice(0, GameConfig.weather.historyLimit);
 
     this.showMessage(`天气变化：${config.name}。`);
   }

@@ -44,7 +44,7 @@ export class SpecialEventSystem {
     for (let i = 0; i < event.foxes.length; i += 1) {
       const fox = event.foxes[i];
       if (moving) fox.x += dt * config.speed;
-      fox.y = event.origin.y + Math.sin((event.timer + i) * 2) * 0.08;
+      fox.y = event.origin.y + Math.sin((event.timer + i) * config.bobFrequency) * config.bobAmplitude;
     }
 
     const lead = event.foxes[0];

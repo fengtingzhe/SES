@@ -10,7 +10,7 @@ export class HudRenderer {
   }
 
   render(state) {
-    const position = `${state.player.x.toFixed(1)}, ${state.player.y.toFixed(1)}`;
+    const position = `${state.player.x.toFixed(GameConfig.ui.positionDecimals)}, ${state.player.y.toFixed(GameConfig.ui.positionDecimals)}`;
     const facing = directionLabel(state.player.facing);
     const hint = state.hover?.label ?? '面前/附近无可互动目标；Space 可放置辉石';
     const totalWorkers = state.workers.filter(worker => !worker.lost).length;
@@ -156,16 +156,17 @@ export class HudRenderer {
     const waitingResumeWorkers = state.workers.filter(worker => !worker.lost && worker.state === 'waitingResume').length;
     if (waitingResumeWorkers > 0) return '采矿工人正等待原矿山附近安全后自动复工。';
 
-    const nearbyStone = this.nearestTile(state, tile => tile.type === TileType.STONE && !tile.placed, 1.6);
+    const hintDistances = GameConfig.ui.assistHintDistances;
+    const nearbyStone = this.nearestTile(state, tile => tile.type === TileType.STONE && !tile.placed, hintDistances.naturalStone);
     if (nearbyStone) return '靠近自然辉石会自动拾取。';
 
-    const nearbyPlacedStone = this.nearestTile(state, tile => tile.type === TileType.STONE && tile.placed, 1.7);
+    const nearbyPlacedStone = this.nearestTile(state, tile => tile.type === TileType.STONE && tile.placed, hintDistances.placedStone);
     if (nearbyPlacedStone) return '临时辉石不会自动拾回，需要 Space 主动拾回。';
 
-    const nearbyFog = this.nearestTile(state, tile => tile.type === TileType.FOG, 3.2);
+    const nearbyFog = this.nearestTile(state, tile => tile.type === TileType.FOG, hintDistances.fogGate);
     if (nearbyFog) return '雾门是夜晚黑影来源，靠近营地时需提前防守。';
 
-    const nearbyGoal = this.nearestTile(state, tile => tile.type === TileType.GOAL, 2.4);
+    const nearbyGoal = this.nearestTile(state, tile => tile.type === TileType.GOAL, hintDistances.goal);
     if (nearbyGoal) return '远方灯塔是看海目标，靠近后按 Space 完成阶段目标。';
 
     if (state.time.phase === 'night') return '夜晚黑影会从雾门出现，辉石可诱导黑影。';

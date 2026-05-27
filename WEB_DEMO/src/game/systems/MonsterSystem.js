@@ -190,7 +190,7 @@ export class MonsterSystem {
     monster.attacking = false;
     monster.attackTimer = 0;
 
-    if (d > 0.05) {
+    if (d > GameConfig.monster.moveEpsilon) {
       this.moveToward(monster, object, dt);
     }
 
@@ -243,7 +243,7 @@ export class MonsterSystem {
     const wall = state.world.map.cell(x, y);
     if (wall?.type !== TileType.WALL || (wall.hp || 0) <= 0) return;
 
-    wall.hp -= 1;
+    wall.hp -= GameConfig.wall.damagePerMonsterHit;
     if (wall.hp <= 0) {
       state.world.map.blank(x, y);
       monster.attacking = false;
@@ -258,8 +258,8 @@ export class MonsterSystem {
     state.player.invulnerable = GameConfig.monster.playerInvulnerableSeconds;
 
     if (state.resources.stone > 0) {
-      state.resources.stone -= 1;
-      this.showMessage('你被袭击，失去 1 个辉石。');
+      state.resources.stone -= GameConfig.monster.playerStoneLoss;
+      this.showMessage(`你被袭击，失去 ${GameConfig.monster.playerStoneLoss} 个辉石。`);
       return;
     }
 
@@ -313,7 +313,7 @@ export class MonsterSystem {
 
   moveToward(monster, target, dt) {
     const d = distance(monster, target);
-    if (d <= 0.001) return;
+    if (d <= GameConfig.monster.normalizeEpsilon) return;
 
     monster.x += ((target.x - monster.x) / d) * GameConfig.monster.speed * dt;
     monster.y += ((target.y - monster.y) / d) * GameConfig.monster.speed * dt;

@@ -27,7 +27,7 @@ export class ResourceSystem {
       if (tile.type !== TileType.STONE || tile.placed) return;
 
       if (distance(state.player, { x, y }) < GameConfig.resource.pickupRadius) {
-        gained += tile.value || 1;
+        gained += tile.value || GameConfig.resource.defaultStoneValue;
         state.world.map.blank(x, y);
       }
     });
@@ -42,7 +42,7 @@ export class ResourceSystem {
     const tile = state.world.map.cell(x, y);
     if (tile?.type !== TileType.STONE || !tile.placed) return false;
 
-    const value = tile.value || 1;
+    const value = tile.value || GameConfig.resource.defaultStoneValue;
     state.resources.stone += value;
     state.world.map.blank(x, y);
     this.showMessage(`拾回辉石 +${value}`);
@@ -50,7 +50,7 @@ export class ResourceSystem {
   }
 
   placeStone(state) {
-    if (state.resources.stone <= 0) {
+    if (state.resources.stone < GameConfig.resource.placedStoneValue) {
       this.showMessage('没有辉石可放置。');
       return false;
     }
@@ -62,7 +62,7 @@ export class ResourceSystem {
       { x: px + state.player.facing.x, y: py + state.player.facing.y }
     ];
 
-    for (let radius = 1; radius <= 2; radius += 1) {
+    for (let radius = 1; radius <= GameConfig.resource.placeSearchRadius; radius += 1) {
       for (let y = py - radius; y <= py + radius; y += 1) {
         for (let x = px - radius; x <= px + radius; x += 1) {
           spots.push({ x, y });
@@ -83,18 +83,25 @@ export class ResourceSystem {
       return false;
     }
 
-    state.resources.stone -= 1;
-    map.setStone(target.x, target.y, 1, GameConfig.resource.placedStoneLife, true);
-    this.showMessage('放置辉石 -1。');
+    state.resources.stone -= GameConfig.resource.placedStoneValue;
+    map.setStone(
+      target.x,
+      target.y,
+      GameConfig.resource.placedStoneValue,
+      GameConfig.resource.placedStoneLife,
+      true
+    );
+    this.showMessage(`放置辉石 -${GameConfig.resource.placedStoneValue}。`);
     return true;
   }
 
-  dropStoneNear(state, x, y, value = 1) {
+  dropStoneNear(state, x, y, value = GameConfig.resource.defaultStoneValue) {
     const map = state.world.map;
     const points = [];
+    const radius = GameConfig.resource.dropSearchRadius;
 
-    for (let yy = Math.round(y) - 2; yy <= Math.round(y) + 2; yy += 1) {
-      for (let xx = Math.round(x) - 2; xx <= Math.round(x) + 2; xx += 1) {
+    for (let yy = Math.round(y) - radius; yy <= Math.round(y) + radius; yy += 1) {
+      for (let xx = Math.round(x) - radius; xx <= Math.round(x) + radius; xx += 1) {
         if (map.cell(xx, yy)?.type === TileType.GROUND) {
           points.push({ x: xx, y: yy });
         }
