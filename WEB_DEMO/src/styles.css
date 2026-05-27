@@ -65,6 +65,123 @@ body,
   color: #fff1b8;
 }
 
+.phase-banner {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 112px;
+  height: 38px;
+  padding: 0 14px;
+  border: 1px solid rgba(239, 226, 176, 0.24);
+  border-radius: 8px;
+  background: rgba(10, 18, 16, 0.72);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.26);
+  color: #dbe7df;
+  font-size: 14px;
+  line-height: 1;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.phase-banner b {
+  color: #fff1b8;
+}
+
+.phase-banner__text {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.phase-icon {
+  position: relative;
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+}
+
+.phase-status--day .phase-icon {
+  width: 12px;
+  height: 12px;
+  margin: 2px;
+  border-radius: 50%;
+  background: #ffd86b;
+  box-shadow:
+    0 0 0 2px rgba(255, 216, 107, 0.22),
+    0 0 10px rgba(255, 216, 107, 0.55);
+}
+
+.phase-status--day .phase-icon::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg 18deg,
+    rgba(255, 216, 107, 0.95) 18deg 28deg,
+    transparent 28deg 72deg,
+    rgba(255, 216, 107, 0.95) 72deg 82deg,
+    transparent 82deg 126deg,
+    rgba(255, 216, 107, 0.95) 126deg 136deg,
+    transparent 136deg 180deg,
+    rgba(255, 216, 107, 0.95) 180deg 190deg,
+    transparent 190deg 234deg,
+    rgba(255, 216, 107, 0.95) 234deg 244deg,
+    transparent 244deg 288deg,
+    rgba(255, 216, 107, 0.95) 288deg 298deg,
+    transparent 298deg 342deg,
+    rgba(255, 216, 107, 0.95) 342deg 352deg,
+    transparent 352deg 360deg
+  );
+  -webkit-mask: radial-gradient(circle, transparent 58%, #000 62%);
+  mask: radial-gradient(circle, transparent 58%, #000 62%);
+}
+
+.phase-status--dusk .phase-icon {
+  overflow: hidden;
+  border-radius: 4px;
+  background: linear-gradient(to top, rgba(47, 77, 91, 0.95) 0 43%, transparent 43%);
+}
+
+.phase-status--dusk .phase-icon::before {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ffb45f;
+  box-shadow: 0 0 8px rgba(255, 180, 95, 0.55);
+}
+
+.phase-status--dusk .phase-icon::after {
+  content: "";
+  position: absolute;
+  left: 1px;
+  right: 1px;
+  bottom: 6px;
+  height: 2px;
+  border-radius: 999px;
+  background: rgba(255, 226, 164, 0.85);
+}
+
+.phase-status--night .phase-icon {
+  border-radius: 50%;
+  background: #d8e5ff;
+  box-shadow:
+    inset -5px 0 0 #10304a,
+    0 0 8px rgba(216, 229, 255, 0.4);
+}
+
 .hint {
   margin-top: 6px;
   color: #b9c8be;

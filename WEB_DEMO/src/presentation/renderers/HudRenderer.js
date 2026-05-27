@@ -3,9 +3,10 @@ import { GameConfig } from '../../game/config/GameConfig.js';
 import { TileType } from '../../game/world/TileMap.js';
 
 export class HudRenderer {
-  constructor(hudElement, toastElement) {
+  constructor(hudElement, toastElement, phaseBannerElement = null) {
     this.hudElement = hudElement;
     this.toastElement = toastElement;
+    this.phaseBannerElement = phaseBannerElement;
   }
 
   render(state) {
@@ -32,10 +33,12 @@ export class HudRenderer {
     const busyWorkers = totalWorkers - idleWorkers;
     const statusText = this.statusText(state.status);
     const phaseText = state.time.phase === 'night'
-      ? '夜晚'
+      ? '黑夜'
       : state.time.phase === 'dusk'
         ? '黄昏'
         : '白天';
+    const phaseClass = `phase-status--${state.time.phase}`;
+    this.renderPhaseBanner(phaseText, phaseClass);
 
     this.hudElement.innerHTML = `
       <h1>${state.version}</h1>
@@ -92,6 +95,16 @@ export class HudRenderer {
     });
 
     return { available, cooling };
+  }
+
+  renderPhaseBanner(phaseText, phaseClass) {
+    if (!this.phaseBannerElement) return;
+
+    this.phaseBannerElement.className = `phase-banner ${phaseClass}`;
+    this.phaseBannerElement.innerHTML = `
+      <span class="phase-icon" aria-hidden="true"></span>
+      <span class="phase-banner__text">阶段：<b>${phaseText}</b></span>
+    `;
   }
 
   countWalls(state) {

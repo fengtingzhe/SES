@@ -33,6 +33,7 @@ export class GameApp {
       <div class="game-shell">
         <canvas class="world-canvas" aria-label="WEB_DEMO game canvas"></canvas>
         <section class="hud" aria-live="polite"></section>
+        <div class="phase-banner" aria-live="polite"></div>
         <div class="toast" aria-live="polite"></div>
       </div>
     `;
@@ -40,7 +41,8 @@ export class GameApp {
     this.canvasRenderer = new CanvasRenderer(this.rootElement.querySelector('.world-canvas'));
     this.hudRenderer = new HudRenderer(
       this.rootElement.querySelector('.hud'),
-      this.rootElement.querySelector('.toast')
+      this.rootElement.querySelector('.toast'),
+      this.rootElement.querySelector('.phase-banner')
     );
     this.inputManager = new InputManager({
       onInteract: () => this.interactionSystem.interact(this.state),
