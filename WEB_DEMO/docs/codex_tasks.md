@@ -2,424 +2,550 @@
 
 ---
 
-# 当前任务：WEB_DEMO v1.1-weather-event 天气系统与条件事件触发框架
+# 当前任务：WEB_DEMO v1.2-config-prep GameConfig 整理与配置化准备
 
 ## 任务背景
 
-WEB_DEMO 当前已经完成：
+WEB_DEMO 当前已经完成第一轮核心功能迁移，并新增了天气与条件事件框架：
 
 ```text
 v1.0-refactor：体验回归与辅助信息整理
 v1.0-fix-1：采矿工人自动复工 + 颠倒森林反转迟滞修复
+v1.1-weather-event：天气系统与条件事件触发框架
+后续小调整：顶部阶段 / 天气状态条、颠倒森林边界手感优化
 ```
 
-当前 WEB_DEMO 已经具备完整的第一轮核心链路：
+当前项目已经具备：
 
 ```text
-探索 → 收集辉石 → 派工建设 → 昼夜压力 → 防御 → 人口补给 → 特殊事件 → 终点看海
+探索、辉石、派工、昼夜、黑影、矿山、流民、职业、围墙、防御、特殊事件、终点、天气、条件事件、小地图、HUD 辅助信息
 ```
 
-接下来需要开始增强“旅程变化感”和“随机事件扩展能力”。
+继续新增玩法前，需要先整理配置结构。否则后续数值设计、调参、内容扩展和外部配置拆分都会变得困难。
 
-本轮要新增一套可扩展的天气系统，并让天气成为随机事件触发条件之一。
-
-设计目标不是做真实天气模拟，而是建立：
-
-```text
-天气 = 世界状态
-条件事件触发器 = 根据区域 + 天气 + 概率 + 事件 id 决定是否触发事件
-特殊事件系统 = 执行具体事件
-```
-
-重要原则：
-
-```text
-天气系统不直接写死事件逻辑。
-天气系统只负责当前天气、持续时间、天气标签和天气状态。
-事件触发系统根据配置规则判断是否触发事件。
-```
-
----
-
-## 用户设计要求
-
-本轮来自策划新增需求：
-
-```text
-我想做一套天气系统，会影响后续随机事件的发生，比如在地图 A 上，下雨天有 B 概率触发事件 C。注意系统扩展性。
-1. 天气包括：雨、雪、大风。
-2. 概率触发天气。
-```
+本轮目标不是新增系统，而是把当前 WEB_DEMO 的静态数值、规则参数、事件参数、HUD / UI 参数和可配置文案整理清楚。
 
 ---
 
 # 本轮目标
 
-新增：
+版本名称：
 
 ```text
-1. WeatherSystem：天气系统。
-2. WeatherEventSystem 或 EventTriggerSystem：条件事件触发框架。
-3. 天气类型：雨、雪、大风。
-4. 每天或阶段开始时概率触发天气。
-5. 天气持续一段时间。
-6. HUD 显示当前天气和剩余时间。
-7. 地图区域支持 regionTag 或等价区域标记。
-8. 支持配置规则：区域 + 天气 + 概率 + 事件 id。
-9. 至少实现 1 个最小测试事件。
+WEB_DEMO v1.2-config-prep GameConfig 整理与配置化准备
 ```
 
-本轮不是做大量天气事件内容，而是搭建可扩展框架。
-
----
-
-# 核心架构要求
-
-## 一、WeatherSystem 职责
-
-WeatherSystem 只负责天气状态，不负责具体事件。
-
-必须支持：
+本轮要完成：
 
 ```text
-1. 当前天气 currentWeather。
-2. 天气剩余时间 timer / remainingSeconds。
-3. 天气持续时间 durationSeconds。
-4. 天气每日触发概率。
-5. 天气类型按权重随机选择。
-6. 天气结束后恢复 clear / none。
-7. 天气历史或最近天气记录可以先选做。
-```
-
-建议状态结构：
-
-```js
-state.weather = {
-  current: null,
-  remaining: 0,
-  duration: 0,
-  dayRolled: 0,
-  history: []
-}
-```
-
-天气类型至少包括：
-
-```text
-rain：雨
-snow：雪
-wind：大风
-```
-
-建议配置：
-
-```js
-weather: {
-  dailyChance: 0.45,
-  checkPhase: 'dayStart',
-  types: {
-    rain: {
-      name: '雨',
-      weight: 40,
-      durationSeconds: [35, 70],
-      tags: ['wet', 'low_visibility']
-    },
-    snow: {
-      name: '雪',
-      weight: 25,
-      durationSeconds: [35, 70],
-      tags: ['cold', 'slow']
-    },
-    wind: {
-      name: '大风',
-      weight: 35,
-      durationSeconds: [25, 55],
-      tags: ['windy', 'unstable']
-    }
-  }
-}
-```
-
-字段命名要清楚，并尽量写中文注释，说明字段用途。
-
----
-
-## 二、概率触发天气
-
-第一版建议采用“每天开始时判定天气”：
-
-```text
-1. 每天进入 day 阶段且尚未为当天判定天气时，roll 一次是否出现天气。
-2. 如果未命中 dailyChance，则当天保持无天气。
-3. 如果命中 dailyChance，则按天气类型 weight 抽取雨 / 雪 / 大风。
-4. 随机持续时间。
-5. 天气 remaining 随 dt 递减。
-6. remaining <= 0 时天气结束。
-```
-
-必须避免：
-
-```text
-1. 每帧反复 roll 天气。
-2. 一天内无限触发天气。
-3. 天气结束后立刻再次在同一天触发。
-```
-
-可以用：
-
-```text
-state.weather.dayRolled = state.time.day
-```
-
-来避免同一天重复判定。
-
----
-
-## 三、区域标记 regionTag
-
-为支持“地图 A + 天气 + 概率 → 事件 C”，需要区域标记能力。
-
-第一版可以不做复杂 RegionSystem，但至少要让 tile 或区域具备标签。
-
-建议方式：
-
-```js
-tile.regionTag = 'forest'
-tile.regionTag = 'river'
-tile.regionTag = 'camp'
-tile.regionTag = 'invertedForest'
-tile.regionTag = 'foxWeddingArea'
-```
-
-最小要求：
-
-```text
-1. 至少为颠倒森林区域标记 regionTag = 'invertedForest'。
-2. 至少为主路径附近部分森林 / 地面区域标记 regionTag = 'forest' 或等价区域。
-3. EventTriggerSystem 能读取玩家当前位置或附近地块的 regionTag。
-```
-
-如果 Codex 认为直接给所有 tile 加 regionTag 风险较高，可以先实现辅助函数：
-
-```text
-getPlayerRegionTags(state)
-```
-
-根据玩家当前位置周围地块推导区域标签。
-
----
-
-## 四、WeatherEventSystem / EventTriggerSystem 职责
-
-该系统负责根据规则触发事件。
-
-必须支持规则格式：
-
-```js
-weatherEventRules: [
-  {
-    id: 'rain_forest_test_refugee',
-    regionTag: 'forest',
-    weather: 'rain',
-    chance: 0.25,
-    eventId: 'rainRefugee',
-    cooldownDays: 1
-  }
-]
-```
-
-字段含义必须清楚：
-
-```text
-id：规则 id。
-regionTag：要求玩家所在区域或附近区域标签。
-weather：要求天气类型。
-chance：触发概率。
-eventId：触发的事件 id。
-cooldownDays：规则冷却天数，避免重复刷。
-```
-
-事件触发系统必须：
-
-```text
-1. 检查当前天气。
-2. 检查玩家所在或附近区域标签。
-3. 检查规则冷却。
-4. 按 chance 概率触发。
-5. 触发后记录 lastTriggeredDay 或触发历史。
-6. 不要每帧高频 roll，建议每隔固定间隔检查一次。
-```
-
-建议配置：
-
-```js
-weatherEvents: {
-  checkIntervalSeconds: 6,
-  rules: [ ... ]
-}
+1. 整理 GameConfig 结构。
+2. 给所有配置字段补充清晰中文注释。
+3. 区分“策划参数”和“程序常量”。
+4. 把散落在代码中的魔法数字尽量集中到 GameConfig。
+5. 新增 WEB_DEMO/docs/config_reference.md。
+6. 在 config_reference.md 中说明字段路径、中文含义、默认值、单位、是否策划参数、影响系统和注意事项。
+7. 为后续 JSON / CSV 拆分做准备。
 ```
 
 ---
 
-## 五、最小测试事件
+# 重要原则
 
-本轮至少实现 1 个非侵入式测试事件，用来验证框架可用。
-
-推荐事件：
-
-```text
-rain_forest_test_refugee
-```
-
-规则：
-
-```text
-森林区域 + 雨天 + 25% 概率 → 触发雨中流民事件
-```
-
-事件效果建议：
-
-```text
-在玩家附近可通行地块生成一个临时流民火堆 / 雨中流民点。
-```
-
-如果复用流民火堆成本太高，也可以先做最小事件：
-
-```text
-雨中流民事件触发后，显示提示，并在玩家附近掉落 1 个辉石或生成一个标记点。
-```
-
-但推荐优先生成临时流民火堆，因为它能和已有流民系统形成联动。
-
-必须避免：
-
-```text
-1. 不要破坏已有流民火堆冷却规则。
-2. 不要无限刷流民火堆。
-3. 不要在不可通行地块、水中、深林中生成事件点。
-4. 不要直接修改 GPT_DEMO。
-```
-
----
-
-# 三种天气第一版效果建议
-
-## 雨 rain
-
-第一版效果：
-
-```text
-1. HUD 显示“雨”。
-2. 可作为森林类随机事件条件。
-3. 可轻微改变 WorldRenderer 表现，例如半透明雨幕 / 蓝灰色覆盖层。
-```
-
-不要求第一版修改移动速度或视野。
-
-## 雪 snow
-
-第一版效果：
-
-```text
-1. HUD 显示“雪”。
-2. 可作为寒冷 / 火种类事件条件。
-3. 可轻微改变 WorldRenderer 表现，例如白色粒子 / 覆盖层。
-```
-
-不要求第一版降低工人速度，避免影响既有平衡。
-
-## 大风 wind
-
-第一版效果：
-
-```text
-1. HUD 显示“大风”。
-2. 可作为不稳定事件条件。
-3. 可轻微改变 WorldRenderer 表现，例如风线 / 摇动提示。
-```
-
-不要求第一版吹灭营火、影响箭矢或改变黑影行为。
-
----
-
-# 配置化与扩展性要求
-
-本轮必须注意扩展性。
-
-不要写成：
-
-```js
-if (weather === 'rain') {
-  triggerRainEvent();
-}
-```
-
-而应写成：
-
-```text
-WeatherSystem 提供 weather.current。
-WeatherEventSystem 遍历 weatherEventRules。
-满足 regionTag + weather + chance + cooldown 后，调用对应 event handler。
-```
-
-事件 handler 可以先最小化，例如：
-
-```js
-handlers: {
-  rainRefugee: triggerRainRefugee
-}
-```
-
-后续可以扩展：
-
-```text
-森林 + 雨 = 雨中流民
-河边 + 雨 = 河水上涨
-桥边 + 大风 = 桥晃动
-营地 + 雪 = 火种消耗加快
-颠倒森林 + 大风 = 风中迷向
-狐狸婚仪 + 雨 = 狐火婚仪
-```
-
----
-
-# HUD 与表现要求
-
-HUD 至少显示：
-
-```text
-1. 当前天气：晴 / 雨 / 雪 / 大风。
-2. 天气剩余时间。
-3. 如果触发天气事件，显示最近触发事件提示。
-```
-
-WorldRenderer 可选表现：
-
-```text
-1. 雨：轻量蓝灰色覆盖层或简单雨线。
-2. 雪：轻量白色点。
-3. 大风：简单风线。
-```
-
-表现不作为核心阻塞项，但 HUD 必须完成。
-
----
-
-# 本轮不要做
+## 一、本轮只做配置整理，不做外部配置读取
 
 禁止本轮实现：
 
 ```text
-1. 不做真实天气模拟。
-2. 不做积雪、洪水、体温、疾病等复杂生存系统。
-3. 不让天气大幅改变玩家 / 工人 / 黑影数值。
-4. 不做大量天气事件内容。
-5. 不做正式美术、音乐、音效。
-6. 不做存档系统。
-7. 不做 CSV / JSON 配置读取。
-8. 不做移动端适配。
-9. 不大规模重构现有事件系统。
-10. 不修改 GPT_DEMO/**。
+1. 不拆 JSON。
+2. 不拆 CSV。
+3. 不接入外部配置加载器。
+4. 不做配置编辑器。
+5. 不做 Excel / 表格导入。
+6. 不做运行时热更新配置。
+```
+
+当前仍然使用：
+
+```text
+WEB_DEMO/src/game/config/GameConfig.js
+```
+
+作为唯一配置中心。
+
+---
+
+## 二、本轮不做数值平衡
+
+可以整理字段、补注释、归类参数，但不要随意改默认数值。
+
+允许小范围重命名或移动字段，但必须保证行为基本一致。
+
+如果必须调整数值，需要在 changelog 和审计文档中说明原因。
+
+---
+
+## 三、优先保证现有玩法不坏
+
+整理配置时必须保持现有功能可运行：
+
+```text
+探索、拾取辉石、临时辉石、派工砍树、修桥、建营地、采矿、昼夜、黑影、流民、转职、围墙、弓箭手、颠倒森林、狐狸婚仪、终点、天气、小地图、HUD
+```
+
+---
+
+# 推荐 GameConfig 结构
+
+请根据当前代码实际情况整理，不要求完全一字不差，但建议形成以下结构：
+
+```js
+GameConfig = {
+  version,
+
+  map: {},
+  player: {},
+  resource: {},
+  worker: {},
+  job: {},
+  population: {},
+  mine: {},
+  wall: {},
+  archer: {},
+  monster: {},
+  dayNight: {},
+  weather: {},
+  weatherEvents: {},
+  events: {},
+  vision: {},
+  camera: {},
+  ui: {},
+  message: {}
+}
+```
+
+如果当前已有字段不适合移动，可以保留，但需要在 `config_reference.md` 中说明。
+
+---
+
+# 必须整理的配置模块
+
+## 1. map 地图配置
+
+至少包含或说明：
+
+```text
+地图宽高
+起点坐标
+终点坐标
+地图随机种子
+主路径 / 分支 / 河流 / 特殊点生成相关参数，如果当前仍散落在 MapGenerator 中，应尽量迁入 GameConfig.map 或 GameConfig.mapGeneration
+```
+
+注意：不要求重写地图生成算法，只迁移明显魔法数字。
+
+---
+
+## 2. player 玩家配置
+
+至少包含或说明：
+
+```text
+玩家速度
+初始朝向
+颠倒森林退出迟滞时间
+颠倒森林移动锁定相关配置，如果有
+无敌时间如果由 monster.playerInvulnerableSeconds 管理，需要在文档中说明
+```
+
+---
+
+## 3. resource 辉石配置
+
+至少包含或说明：
+
+```text
+初始辉石
+放置辉石持续时间
+掉落辉石持续时间
+自然辉石拾取半径
+临时辉石拾回相关距离 / 规则
+```
+
+---
+
+## 4. worker 工人配置
+
+至少包含或说明：
+
+```text
+工人移动速度
+默认工作时长
+夜晚威胁感知范围
+采矿复工安全范围
+待复工状态相关参数
+```
+
+---
+
+## 5. job 任务配置
+
+建议将任务成本与时长统一整理到 `GameConfig.job` 或保持现有 `jobCosts.js / jobDurations.js` 但在配置文档说明来源。
+
+至少覆盖：
+
+```text
+砍树成本 / 时长
+修桥成本 / 时长
+建营地成本 / 时长
+建墙成本 / 时长
+采矿成本 0 的规则
+```
+
+如果当前成本还在独立 rules 文件中，不强制迁移，但必须在 `config_reference.md` 说明：
+
+```text
+当前任务成本仍位于 WEB_DEMO/src/game/rules/jobCosts.js，后续可迁入 GameConfig.job。
+```
+
+---
+
+## 6. population 人口与转职配置
+
+至少包含或说明：
+
+```text
+初始工人数量
+招募流民成本
+流民火堆冷却
+流民移动速度
+转职成本
+待转职人口规则
+```
+
+---
+
+## 7. mine 矿山配置
+
+至少包含或说明：
+
+```text
+矿山产出周期
+每次产出辉石数量，如果当前写死为 1，需要迁入配置或记录待迁移
+矿山占用规则说明
+```
+
+---
+
+## 8. wall 围墙配置
+
+至少包含或说明：
+
+```text
+围墙最大 HP
+黑影攻墙间隔
+攻墙距离
+围墙是否可通行：当前为待策划确认项，必须在文档中保留说明
+```
+
+---
+
+## 9. archer 弓箭手配置
+
+至少包含或说明：
+
+```text
+射程
+瞄准时间
+冷却时间
+伤害
+黑影 HP=1 因此一箭击杀的关系说明
+```
+
+---
+
+## 10. monster 黑影配置
+
+至少包含或说明：
+
+```text
+每晚生成数量
+生成间隔
+最大活跃数
+4 格战术感知范围
+目标锁定时间
+移动速度
+攻击距离
+营地推进距离
+HP
+玩家受击无敌时间
+目标优先级如仍在代码中，需在 config_reference.md 说明位置和后续可配置化方向
+```
+
+---
+
+## 11. dayNight 昼夜配置
+
+至少包含或说明：
+
+```text
+一天总时长
+初始时间
+黄昏开始比例
+夜晚开始比例
+夜晚判定点
+顶部阶段显示是否只读取当前 phase
+```
+
+---
+
+## 12. weather 天气配置
+
+至少包含或说明：
+
+```text
+每日触发概率
+判定阶段
+随机种子
+雨 / 雪 / 大风配置
+天气权重
+持续时间范围
+天气标签
+```
+
+---
+
+## 13. weatherEvents 天气事件配置
+
+至少包含或说明：
+
+```text
+检查间隔
+区域扫描半径
+生成点搜索半径
+随机种子
+事件规则数组
+规则 id
+regionTag
+weather
+chance
+eventId
+cooldownDays
+```
+
+必须说明：
+
+```text
+WeatherSystem 不直接写死事件，WeatherEventSystem 根据规则触发事件。
+```
+
+---
+
+## 14. events 特殊事件配置
+
+至少包含或说明：
+
+```text
+颠倒森林半径
+狐狸婚仪奖励辉石
+狐狸婚仪持续时间
+移动周期
+移动时长
+队列速度
+狐狸数量
+队列间距
+成功 / 失败距离阈值
+```
+
+---
+
+## 15. vision / camera / ui / message
+
+至少包含或说明：
+
+```text
+玩家视野半径
+起点初始揭示半径
+格子尺寸
+镜头缩放
+镜头跟随速度
+小地图尺寸
+HUD / 顶部阶段天气条相关配置，如当前在 CSS 中则说明
+消息显示时长
+```
+
+---
+
+# 魔法数字清理要求
+
+请扫描以下目录：
+
+```text
+WEB_DEMO/src/game/**
+WEB_DEMO/src/app/**
+WEB_DEMO/src/presentation/**
+```
+
+将明显可配置的魔法数字迁入 GameConfig。
+
+优先迁移：
+
+```text
+时间
+距离
+半径
+数量
+成本
+产出
+冷却
+概率
+UI 尺寸
+消息持续时间
+事件奖励
+```
+
+不强制迁移：
+
+```text
+循环索引
+数组下标
+简单数学常量
+渲染中非常局部的像素微调
+CSS 纯样式尺寸
+```
+
+如果不迁移，需要在 config_reference 或 known_issues 中说明后续可迁移方向。
+
+---
+
+# config_reference.md 要求
+
+新增文件：
+
+```text
+WEB_DEMO/docs/config_reference.md
+```
+
+必须使用表格，至少包含以下列：
+
+```text
+字段路径
+中文说明
+默认值
+单位
+是否策划参数
+影响系统
+注意事项
+```
+
+示例：
+
+```markdown
+| 字段路径 | 中文说明 | 默认值 | 单位 | 是否策划参数 | 影响系统 | 注意事项 |
+|---|---:|---:|---|---|---|---|
+| worker.speed | 工人移动速度 | 2.25 | 格/秒 | 是 | 工人移动、派工、返程、逃跑 | 过低会降低白天效率，过高会削弱夜晚风险 |
+```
+
+要求：
+
+```text
+1. 覆盖 GameConfig 中所有一级模块。
+2. 重点字段必须逐项说明。
+3. 对仍未迁入 GameConfig 的配置来源，要在文档中标明当前位置和后续迁移建议。
+4. 中文说明必须让非程序策划也能理解用途。
+```
+
+---
+
+# 文档更新要求
+
+完成后必须更新：
+
+```text
+WEB_DEMO/docs/config_reference.md
+WEB_DEMO/docs/changelog.md
+WEB_DEMO/docs/acceptance_tests.md
+WEB_DEMO/docs/known_issues.md
+WEB_DEMO/design/audit/gpt_to_web_rule_audit_v1.md
+```
+
+## changelog.md
+
+新增：
+
+```markdown
+## v1.2-config-prep
+
+状态：GameConfig 整理与配置化准备完成。
+
+内容：
+- 整理 `GameConfig` 结构，补充中文注释。
+- 区分策划参数与程序常量。
+- 将部分散落的魔法数字迁入配置中心。
+- 新增 `WEB_DEMO/docs/config_reference.md`，说明字段路径、默认值、单位、影响系统和注意事项。
+- 本轮不拆 JSON / CSV，不接入外部配置读取，不新增玩法系统。
+```
+
+## acceptance_tests.md
+
+新增 v1.2-config-prep 验收：
+
+```text
+1. 执行 npm run dev 后项目能正常启动。
+2. 从起点到终点的核心流程仍能运行。
+3. GameConfig 结构清晰，字段有中文注释。
+4. config_reference.md 存在且覆盖所有一级配置模块。
+5. 任务成本、时间、半径、概率、天气、事件、HUD / UI 等关键参数能在配置文档中找到。
+6. 本轮没有拆 JSON / CSV。
+7. 本轮没有修改 GPT_DEMO。
+8. 本轮没有新增玩法系统。
+```
+
+## known_issues.md
+
+新增或更新：
+
+```text
+1. 当前仍使用 GameConfig.js 作为配置中心，JSON / CSV 拆分后置。
+2. 部分渲染像素参数和 CSS 样式参数暂不迁入配置。
+3. 任务成本如仍在 jobCosts.js / jobDurations.js 中，记录后续是否迁入 GameConfig.job。
+4. 后续需要进入数值平衡版本，对字段默认值做正式调参。
+```
+
+## gpt_to_web_rule_audit_v1.md
+
+新增：
+
+```markdown
+## v1.2-config-prep 配置化准备记录
+
+### 本轮目标
+
+- 整理 GameConfig。
+- 补中文注释。
+- 新增 config_reference.md。
+- 为未来 JSON / CSV 拆分做准备。
+
+### 修改位置
+
+由 Codex 根据实际修改填写。
+
+### 保持一致的规则
+
+- 本轮不改变核心玩法规则。
+- 本轮不新增玩法系统。
+- 本轮不接入外部配置读取。
+
+### 有意重构
+
+- 将部分散落的静态参数迁入 GameConfig。
+- 将配置字段说明从代码隐含知识转为文档化说明。
+
+### 待确认问题
+
+- 何时拆分 JSON / CSV。
+- 哪些字段进入正式数值表。
+- 是否建立配置校验器。
+- 是否建立策划用配置编辑器。
 ```
 
 ---
@@ -427,12 +553,15 @@ WorldRenderer 可选表现：
 # 允许修改
 
 ```text
-WEB_DEMO/src/**
+WEB_DEMO/src/game/config/GameConfig.js
+WEB_DEMO/src/game/**
+WEB_DEMO/src/app/**
+WEB_DEMO/src/presentation/**
+WEB_DEMO/docs/config_reference.md
 WEB_DEMO/docs/changelog.md
 WEB_DEMO/docs/acceptance_tests.md
 WEB_DEMO/docs/known_issues.md
 WEB_DEMO/design/audit/gpt_to_web_rule_audit_v1.md
-WEB_DEMO/design/systems/gpt_demo_rule_baseline_v1.md
 WEB_DEMO/docs/codex_tasks.md
 ```
 
@@ -451,103 +580,22 @@ PROJECT_STATUS.md
 
 ---
 
-# 文档更新要求
+# 本轮不要做
 
-完成后必须更新：
-
-```text
-WEB_DEMO/docs/changelog.md
-WEB_DEMO/docs/acceptance_tests.md
-WEB_DEMO/docs/known_issues.md
-WEB_DEMO/design/audit/gpt_to_web_rule_audit_v1.md
-```
-
-## changelog.md
-
-新增：
-
-```markdown
-## v1.1-weather-event
-
-状态：天气系统与条件事件触发框架完成。
-
-内容：
-- 新增 WeatherSystem，支持雨、雪、大风三类天气。
-- 天气按每日概率触发，并按权重选择天气类型。
-- 天气拥有持续时间，结束后恢复晴天 / 无天气。
-- 新增 WeatherEventSystem / EventTriggerSystem，根据区域标签、天气、概率和冷却触发事件。
-- 新增 regionTag 或等价区域判断能力。
-- 新增至少 1 个天气测试事件，例如雨天森林触发雨中流民。
-- HUD 显示当前天气和剩余时间。
-- 本轮不做复杂生存天气效果，不修改 GPT_DEMO。
-```
-
-## acceptance_tests.md
-
-新增 v1.1-weather-event 验收：
+禁止本轮实现：
 
 ```text
-1. 启动 WEB_DEMO。
-2. 确认初始天气状态显示为晴 / 无天气。
-3. 等到新的一天或通过调试方式触发每日天气判定。
-4. 确认天气会按概率触发，且类型只会是雨、雪、大风之一。
-5. 确认天气有剩余时间并随时间递减。
-6. 确认天气结束后恢复晴 / 无天气。
-7. 确认一天内不会每帧重复 roll 天气。
-8. 进入带 regionTag 的区域，例如 forest 或 invertedForest。
-9. 在符合天气和区域条件时，天气事件规则有概率触发。
-10. 确认测试事件触发后有可见反馈，例如提示、临时流民火堆或事件点。
-11. 确认测试事件不会无限重复刷。
-12. 确认天气系统没有破坏已有探索、派工、黑影、采矿、流民、围墙、狐狸婚仪和终点目标。
-13. 确认 GPT_DEMO 未被修改。
-```
-
-## known_issues.md
-
-如未完成复杂效果，应记录为后续内容：
-
-```text
-1. 雨、雪、大风当前只作为事件条件和轻量表现，不做真实生存效果。
-2. 天气事件第一版只实现测试事件，更多天气事件后置。
-3. regionTag 第一版可能是轻量标记，后续可扩展正式 RegionSystem。
-```
-
-## gpt_to_web_rule_audit_v1.md
-
-新增：
-
-```markdown
-## v1.1-weather-event 设计与迁移记录
-
-### 新增系统
-
-- WeatherSystem
-- WeatherEventSystem / EventTriggerSystem
-- regionTag / 区域标签能力
-
-### 设计来源
-
-- 用户新增策划需求：天气影响后续随机事件发生，例如地图 A 下雨天有 B 概率触发事件 C。
-
-### 实现规则
-
-- 天气包括雨、雪、大风。
-- 天气按每日概率触发。
-- 天气按权重选择类型。
-- 天气有持续时间。
-- 天气系统只提供世界状态，不直接写死具体事件。
-- 条件事件系统根据区域标签、天气、概率和冷却触发事件。
-
-### 有意重构 / 扩展
-
-- 将“天气”和“事件触发”拆成两个系统，保证扩展性。
-- 事件通过规则表配置，而不是写死在 WeatherSystem 中。
-
-### 待确认问题
-
-- 天气是否未来影响移动速度、视野、火种、黑影或资源产出。
-- regionTag 是否升级为正式 RegionSystem。
-- 天气触发频率、持续时间、事件概率是否进入后续数值配置化。
+1. 不新增玩法系统。
+2. 不做天气新事件。
+3. 不做正式剧情演出。
+4. 不做完整结算系统。
+5. 不做正式图片、音乐、字体。
+6. 不做存档系统。
+7. 不做 JSON / CSV 配置读取。
+8. 不做配置编辑器。
+9. 不做移动端适配。
+10. 不大规模重构核心玩法系统。
+11. 不修改 GPT_DEMO/**。
 ```
 
 ---
@@ -557,22 +605,18 @@ WEB_DEMO/design/audit/gpt_to_web_rule_audit_v1.md
 必须满足：
 
 ```text
-1. 天气类型包括雨、雪、大风。
-2. 天气每日或阶段开始时按概率触发。
-3. 天气类型按权重选择。
-4. 天气有持续时间和剩余时间。
-5. 天气结束后恢复晴 / 无天气。
-6. HUD 显示当前天气和剩余时间。
-7. 代码中存在 WeatherSystem 或等价模块。
-8. 代码中存在 WeatherEventSystem / EventTriggerSystem 或等价模块。
-9. 存在 regionTag 或等价区域判断机制。
-10. 事件规则支持区域 + 天气 + 概率 + eventId。
-11. 至少有 1 个测试天气事件。
-12. 测试事件不会无限重复刷。
-13. 天气系统不直接写死事件逻辑。
-14. 不影响已有核心玩法闭环。
-15. 不修改 GPT_DEMO。
-16. 文档已同步。
+1. GameConfig 结构更清晰。
+2. 关键字段有中文注释。
+3. 明确区分策划参数和程序常量，至少在 config_reference.md 中说明。
+4. 明显的时间、距离、半径、概率、成本、奖励等魔法数字已尽量迁入 GameConfig，或在文档中说明暂不迁移。
+5. 新增 WEB_DEMO/docs/config_reference.md。
+6. config_reference.md 覆盖所有一级配置模块。
+7. changelog、acceptance_tests、known_issues、审计文档已同步。
+8. npm run dev 不应因配置整理报错。
+9. 现有核心玩法不应因配置整理失效。
+10. 本轮没有拆 JSON / CSV。
+11. 本轮没有新增玩法系统。
+12. 本轮没有修改 GPT_DEMO。
 ```
 
 ---
@@ -583,13 +627,12 @@ WEB_DEMO/design/audit/gpt_to_web_rule_audit_v1.md
 
 ```text
 1. 修改 / 新增了哪些文件。
-2. WeatherSystem 如何实现每日概率天气。
-3. 雨、雪、大风如何配置。
-4. WeatherEventSystem 如何根据区域 + 天气 + 概率触发事件。
-5. regionTag 或区域判断如何实现。
-6. 最小测试事件是什么，如何避免无限重复刷。
-7. HUD 如何显示天气。
-8. 是否修改了 GPT_DEMO。
-9. 如何运行和验证。
-10. 哪些天气效果后置。
+2. GameConfig 做了哪些结构整理。
+3. 哪些魔法数字迁入了 GameConfig。
+4. 哪些魔法数字暂未迁移，原因是什么。
+5. config_reference.md 覆盖了哪些模块。
+6. 是否改变了任何默认数值或玩法规则。
+7. 是否修改了 GPT_DEMO。
+8. 如何运行和验证。
+9. 后续 JSON / CSV 拆分建议。
 ```
