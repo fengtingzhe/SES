@@ -27,6 +27,8 @@ export class HudRenderer {
     const walls = this.countWalls(state);
     const foxWedding = this.foxWeddingStatus(state);
     const assistHint = this.assistHint(state);
+    const weatherText = this.weatherText(state);
+    const weatherEventText = state.weatherEvents.lastEvent?.label ?? '无';
     const busyWorkers = totalWorkers - idleWorkers;
     const statusText = this.statusText(state.status);
     const phaseText = state.time.phase === 'night'
@@ -40,6 +42,7 @@ export class HudRenderer {
       <div class="hud-row">
         <span>第 <b>${state.time.day}</b> 天</span>
         <span>阶段：<b>${phaseText}</b></span>
+        <span>天气：<b>${weatherText}</b></span>
         <span>状态：<b>${statusText}</b></span>
         <span>辉石：<b>${state.resources.stone}</b></span>
         <span>位置：<b>${position}</b></span>
@@ -59,6 +62,7 @@ export class HudRenderer {
         <span>家园：<b>${state.homes.length}</b></span>
         <span>黑影：<b>${state.monsters.length}</b>（本夜 <b>${state.monsterSpawn.spawnedThisNight}/${GameConfig.monster.perNight}</b>）</span>
         <span>狐狸婚仪：<b>${foxWedding}</b></span>
+        <span>天气事件：<b>${weatherEventText}</b></span>
         <span>小地图：<b>${state.ui?.showMiniMap ? '显示' : '隐藏'}</b></span>
       </div>
       <div class="hint">当前提示：<b>${hint}</b></div>
@@ -107,6 +111,14 @@ export class HudRenderer {
     if (status === 'completed') return '已看见海';
     if (status === 'failed') return '旅程中断';
     return '进行中';
+  }
+
+  weatherText(state) {
+    if (!state.weather.current) return '晴 / 无天气';
+
+    const config = GameConfig.weather.types[state.weather.current];
+    const label = config?.name ?? state.weather.current;
+    return `${label} ${Math.ceil(state.weather.remaining)}s`;
   }
 
   assistHint(state) {

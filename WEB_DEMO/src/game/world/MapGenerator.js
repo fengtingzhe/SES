@@ -23,7 +23,7 @@ export class MapGenerator {
     this.placeRefugeeFires(map, path);
     this.placeFogGates(map, path);
     this.placeStarterStones(map, path);
-    map.setTile(this.config.goal.x, this.config.goal.y, TileType.GOAL);
+    map.setTile(this.config.goal.x, this.config.goal.y, TileType.GOAL, { regionTag: 'goal' });
 
     return { map, path };
   }
@@ -49,7 +49,7 @@ export class MapGenerator {
         if (!map.cell(x, y)) continue;
         const d = Math.hypot(x - center.x, y - center.y);
         if (d <= radius + 0.3) {
-          map.setTile(x, y, TileType.INVERTED_FOREST, { invertLabel: false });
+          map.setTile(x, y, TileType.INVERTED_FOREST, { invertLabel: false, regionTag: 'invertedForest' });
         }
       }
     }
@@ -73,10 +73,13 @@ export class MapGenerator {
       path.push({ x, y });
       for (let dy = -1; dy <= 1; dy += 1) {
         map.blank(x, y + dy);
+        this.setRegionTag(map, x, y + dy, 'forest');
       }
 
       if (x % 6 === 0) {
-        map.blank(x, y + (this.random() < 0.5 ? 2 : -2));
+        const sideY = y + (this.random() < 0.5 ? 2 : -2);
+        map.blank(x, sideY);
+        this.setRegionTag(map, x, sideY, 'forest');
       }
     }
 
@@ -95,8 +98,13 @@ export class MapGenerator {
         x = clamp(x + randomInt(this.random, 3) - 1, 4, this.config.width - 5);
         y = clamp(y + dir * (this.random() < 0.75 ? 1 : 0), 5, this.config.height - 6);
         map.blank(x, y);
+        this.setRegionTag(map, x, y, 'forest');
         map.blank(x + 1, y);
-        if (n % 3 === 0) map.blank(x, y + dir);
+        this.setRegionTag(map, x + 1, y, 'forest');
+        if (n % 3 === 0) {
+          map.blank(x, y + dir);
+          this.setRegionTag(map, x, y + dir, 'forest');
+        }
       }
     }
   }
@@ -106,10 +114,10 @@ export class MapGenerator {
     const crossing = path.find(point => point.x === rx) ?? path[Math.floor(path.length / 2)];
 
     for (let y = 3; y < this.config.height - 3; y += 1) {
-      map.setTile(rx, y, TileType.WATER);
+      map.setTile(rx, y, TileType.WATER, { regionTag: 'river' });
     }
 
-    map.setTile(rx, crossing.y, TileType.BROKEN_BRIDGE, { job: 'repair' });
+    map.setTile(rx, crossing.y, TileType.BROKEN_BRIDGE, { job: 'repair', regionTag: 'river' });
   }
 
   createStartArea(map) {
@@ -117,20 +125,21 @@ export class MapGenerator {
     for (let y = start.y - 4; y <= start.y + 4; y += 1) {
       for (let x = start.x - 3; x <= start.x + 5; x += 1) {
         map.blank(x, y);
+        this.setRegionTag(map, x, y, 'camp');
       }
     }
-    map.setTile(start.x, start.y, TileType.VILLAGE);
-    map.setTile(start.x + 2, start.y, TileType.MINE, { mine: { workerId: null } });
+    map.setTile(start.x, start.y, TileType.VILLAGE, { regionTag: 'camp' });
+    map.setTile(start.x + 2, start.y, TileType.MINE, { mine: { workerId: null }, regionTag: 'camp' });
     this.placeCareerSites(map, start.x, start.y);
     this.placeWallBases(map, start.x, start.y);
   }
 
   placeCareerSites(map, x, y) {
     if (map.cell(x + 1, y + 2)?.type === TileType.GROUND) {
-      map.setTile(x + 1, y + 2, TileType.WORKER_HUT);
+      map.setTile(x + 1, y + 2, TileType.WORKER_HUT, { regionTag: 'camp' });
     }
     if (map.cell(x + 3, y + 2)?.type === TileType.GROUND) {
-      map.setTile(x + 3, y + 2, TileType.ARCHER_CAMP);
+      map.setTile(x + 3, y + 2, TileType.ARCHER_CAMP, { regionTag: 'camp' });
     }
   }
 
@@ -142,7 +151,7 @@ export class MapGenerator {
 
     for (const base of bases) {
       if (map.cell(base.x, base.y)?.type === TileType.GROUND) {
-        map.setTile(base.x, base.y, TileType.WALL_BASE);
+        map.setTile(base.x, base.y, TileType.WALL_BASE, { regionTag: 'camp' });
       }
     }
   }
@@ -157,7 +166,7 @@ export class MapGenerator {
 
     for (const spot of treeSpots) {
       if (map.cell(spot.x, spot.y)) {
-        map.setTile(spot.x, spot.y, TileType.FOREST, { job: 'chop' });
+        map.setTile(spot.x, spot.y, TileType.FOREST, { job: 'chop', regionTag: 'forest' });
       }
     }
 
@@ -165,7 +174,7 @@ export class MapGenerator {
     const campY = clamp(campAnchor.y + 2, 4, this.config.height - 5);
     const campSpot = this.findNearestGround(map, campAnchor.x, campY);
     if (campSpot) {
-      map.setTile(campSpot.x, campSpot.y, TileType.OLD_FIREPIT, { job: 'camp' });
+      map.setTile(campSpot.x, campSpot.y, TileType.OLD_FIREPIT, { job: 'camp', regionTag: 'forest' });
     }
   }
 
@@ -176,10 +185,12 @@ export class MapGenerator {
 
   placeRefugeeFires(map, path) {
     this.placeNearPath(map, path, 16, 4, TileType.REFUGEE_FIRE, {
-      refugee: { available: true, cooldown: 0 }
+      refugee: { available: true, cooldown: 0 },
+      regionTag: 'forest'
     }, true);
     this.placeNearPath(map, path, 30, 4, TileType.REFUGEE_FIRE, {
-      refugee: { available: true, cooldown: 0 }
+      refugee: { available: true, cooldown: 0 },
+      regionTag: 'forest'
     }, true);
   }
 
@@ -208,6 +219,11 @@ export class MapGenerator {
       }
     }
     return null;
+  }
+
+  setRegionTag(map, x, y, regionTag) {
+    const tile = map.cell(x, y);
+    if (tile) tile.regionTag = regionTag;
   }
 
   placeStarterStones(map, path) {

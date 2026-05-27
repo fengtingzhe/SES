@@ -1,5 +1,58 @@
 # GPT_DEMO -> WEB_DEMO 规则审计 v1
 
+## v1.1-weather-event 设计与实现记录
+
+### 新增系统
+
+- `WeatherSystem`
+- `WeatherEventSystem`
+- `regionTag` / 区域标签能力
+
+### 设计来源
+
+- 用户新增策划需求：天气影响后续随机事件发生，例如“地图 A + 下雨天 + B 概率 -> 触发事件 C”。
+
+### 实现规则
+
+- 天气包括雨、雪、大风。
+- 天气在每日进入白天后按概率触发。
+- 天气按权重选择类型。
+- 天气有持续时间和剩余时间。
+- 天气结束后恢复晴 / 无天气。
+- `WeatherSystem` 只提供世界天气状态，不直接写死具体事件。
+- `WeatherEventSystem` 根据区域标签、天气、概率、eventId 和冷却触发事件。
+- 测试事件 `rain_forest_test_refugee` 在雨天森林区域按概率触发“雨中流民”。
+
+### 修改位置
+
+- `WEB_DEMO/src/game/systems/WeatherSystem.js`
+- `WEB_DEMO/src/game/systems/WeatherEventSystem.js`
+- `WEB_DEMO/src/game/config/GameConfig.js`
+- `WEB_DEMO/src/game/state/createInitialState.js`
+- `WEB_DEMO/src/game/world/TileMap.js`
+- `WEB_DEMO/src/game/world/MapGenerator.js`
+- `WEB_DEMO/src/app/GameApp.js`
+- `WEB_DEMO/src/presentation/renderers/HudRenderer.js`
+
+### 有意重构 / 扩展
+
+- 将“天气状态”和“事件触发”拆成两个系统，避免把具体事件写死在 WeatherSystem 中。
+- 天气事件通过规则表配置，后续可增加“河边 + 雨”“桥边 + 大风”“颠倒森林 + 大风”等事件。
+- `regionTag` 当前是轻量区域标记，主路森林、颠倒森林、营地、河流和终点已具备基础标签。
+
+### 测试事件
+
+- 事件规则：`forest + rain + 25% -> rainRefugee`。
+- 事件效果：在玩家附近可通行空地生成一个流民火堆，并记录最近天气事件为“雨中流民”。
+- 防重复机制：规则记录 `lastTriggeredDay`，并使用 `cooldownDays` 阻止同一天高频重复触发。
+
+### 待确认问题
+
+- 天气未来是否影响移动速度、视野、火种、黑影或资源产出。
+- `regionTag` 是否升级为正式 `RegionSystem`。
+- 天气触发频率、持续时间和事件概率是否进入后续数值配置化。
+- 是否为天气增加正式视觉、音效或剧情事件。
+
 ## v1.0-fix-1 修复记录
 
 ### 修复问题

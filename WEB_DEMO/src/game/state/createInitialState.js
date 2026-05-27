@@ -31,6 +31,19 @@ export function createInitialState() {
       cooldown: 0,
       nextId: 1
     },
+    weather: {
+      current: null,
+      remaining: 0,
+      duration: 0,
+      dayRolled: 0,
+      history: []
+    },
+    weatherEvents: {
+      checkTimer: 0,
+      lastTriggeredDay: {},
+      lastEvent: null,
+      history: []
+    },
     status: 'playing',
     completion: null,
     time: {
@@ -67,7 +80,7 @@ export function createInitialState() {
     },
     hover: null,
     message: {
-      text: 'v1.0-fix-1：采矿复工与颠倒森林迟滞修复中。',
+      text: 'v1.1-weather-event：天气与条件事件框架测试中。',
       ttl: GameConfig.messageSeconds
     }
   };

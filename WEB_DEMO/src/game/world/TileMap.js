@@ -52,6 +52,7 @@ export function createTile(type = TileType.FOREST, extra = {}) {
     mine: null,
     refugee: null,
     event: null,
+    regionTag: null,
     invertLabel: false,
     hp: null,
     ...extra
@@ -81,6 +82,7 @@ export class TileMap {
     const next = createTile(type, {
       discovered: previous.discovered,
       visible: previous.visible,
+      regionTag: previous.regionTag,
       ...extra
     });
     this.tiles[y][x] = next;

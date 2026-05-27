@@ -11,6 +11,8 @@ import { PopulationSystem } from '../game/systems/PopulationSystem.js';
 import { ResourceSystem } from '../game/systems/ResourceSystem.js';
 import { SpecialEventSystem } from '../game/systems/SpecialEventSystem.js';
 import { VisionSystem } from '../game/systems/VisionSystem.js';
+import { WeatherEventSystem } from '../game/systems/WeatherEventSystem.js';
+import { WeatherSystem } from '../game/systems/WeatherSystem.js';
 import { WorkerSystem } from '../game/systems/WorkerSystem.js';
 import { CanvasRenderer } from '../presentation/renderers/CanvasRenderer.js';
 import { HudRenderer } from '../presentation/renderers/HudRenderer.js';
@@ -78,6 +80,8 @@ export class GameApp {
 
   reset() {
     this.state = createInitialState();
+    this.weatherSystem = new WeatherSystem(this.showMessage);
+    this.weatherEventSystem = new WeatherEventSystem(this.showMessage);
     this.visionSystem.reveal(this.state);
     this.state.hover = this.interactionSystem.findInteract(this.state, false);
   }
@@ -108,11 +112,13 @@ export class GameApp {
     if (this.state.status === 'playing') {
       const playerMovement = this.inputManager.getMovementVector();
       this.dayNightSystem.update(this.state, dt);
+      this.weatherSystem.update(this.state, dt);
       this.state.player.invulnerable = Math.max(0, this.state.player.invulnerable - dt);
       this.playerSystem.update(this.state, dt);
       this.resourceSystem.update(this.state, dt);
       this.workerSystem.update(this.state, dt);
       this.populationSystem.update(this.state, dt);
+      this.weatherEventSystem.update(this.state, dt);
       this.archerSystem.update(this.state, dt);
       this.specialEventSystem.update(this.state, dt, playerMovement);
       this.monsterSystem.update(this.state, dt);
