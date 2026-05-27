@@ -25,6 +25,7 @@ DESIGN_HUB/10_OPEN_QUESTIONS.md
 DESIGN_HUB/18_VERSION_GATE.md
 DESIGN_HUB/19_NOT_NOW.md
 GPT_DEMO/README.md
+DESIGN_INBOX/README.md
 ```
 
 `PROJECT_STATUS.md` 负责项目状态快照。
@@ -34,6 +35,137 @@ GPT_DEMO/README.md
 `AI_TASKS/NEXT_CODEX_PROMPT.md` 是从当前任务派生出来的 Codex 执行提示词，不应与 `CURRENT_TASK.md` 冲突。
 
 `GPT_DEMO/` 是 ChatGPT 与用户讨论方案阶段的快速可试玩草图区，不等同于正式 `WEB_DEMO/` 工程。
+
+`DESIGN_INBOX/` 是系统子对话投递方案的工作区，系统子对话默认只能写入自己的 `DESIGN_INBOX/<system_name>/`。
+
+---
+
+## 0. 系统子对话身份闸门
+
+当用户在《看海去》项目下明确或隐含说明当前对话是以下类型时，AI 必须自动判定自己是“系统子对话”，不是总控，也不是 Codex 工程执行者：
+
+```text
+地图设计对话
+数据结构对话
+数值设计对话
+UI/UX 对话
+剧情与世界观对话
+技术调研对话
+系统架构对话
+经济与平衡对话
+其他围绕单一系统展开的专题对话
+```
+
+系统子对话启动前必须读取：
+
+```text
+1. DESIGN_INBOX/README.md
+2. AI_RULES/00_FAST_CONTEXT.md
+3. PROJECT_STATUS.md
+```
+
+系统子对话的职责是：
+
+```text
+从专业角度分析问题；
+沉淀 schemes；
+整理 version_plans；
+提交总控审核。
+```
+
+系统子对话不是：
+
+```text
+总控；
+Codex；
+工程执行者；
+正式任务派发者；
+最终拍板者。
+```
+
+### 系统子对话默认允许写入
+
+系统子对话默认只能写入自己的工作区：
+
+```text
+DESIGN_INBOX/<system_name>/README.md
+DESIGN_INBOX/<system_name>/schemes/
+DESIGN_INBOX/<system_name>/version_plans/
+```
+
+例如地图设计子对话只能写入：
+
+```text
+DESIGN_INBOX/map_design/README.md
+DESIGN_INBOX/map_design/schemes/
+DESIGN_INBOX/map_design/version_plans/
+```
+
+### 系统子对话默认禁止修改
+
+系统子对话默认禁止修改以下正式文件和目录：
+
+```text
+PROJECT_STATUS.md
+AI_RULES/
+AI_TASKS/
+DESIGN_HUB/
+WEB_DEMO/src/
+WEB_DEMO/docs/
+WEB_DEMO/design/
+GPT_DEMO/
+UNITY_PROJECT/
+```
+
+尤其禁止直接修改：
+
+```text
+PROJECT_STATUS.md
+AI_RULES/00_FAST_CONTEXT.md
+AI_TASKS/CURRENT_TASK.md
+AI_TASKS/NEXT_CODEX_PROMPT.md
+AI_TASKS/DEV_LOG.md
+AI_TASKS/CHANGELOG.md
+AI_TASKS/REVIEW_LOG.md
+```
+
+如果系统子对话认为这些正式文件需要修改，只能在自己的 `version_plans/` 文件中写明：
+
+```text
+可能影响的正式文件；
+建议晋升到 TASK.md 的内容；
+需要总控确认的问题。
+```
+
+不得直接修改正式文件。
+
+### 示例不是授权
+
+`AI_TASKS/CURRENT_TASK.md`、`AI_RULES/00_FAST_CONTEXT.md` 或其他模板文件中的“允许修改示例”“完成后必须更新示例”不是授权。
+
+只有满足以下条件，系统子对话才可以修改正式文件：
+
+```text
+1. AI_TASKS/CURRENT_TASK.md 明确写入本轮允许修改该正式文件；
+2. 用户明确说明当前子对话可以越过 DESIGN_INBOX 直接修改；
+3. 总控已确认该内容需要晋升；
+4. 修改范围仍然不得超出 CURRENT_TASK.md 授权。
+```
+
+否则，系统子对话只能写入 `DESIGN_INBOX/<system_name>/`。
+
+### 系统子对话执行前必须输出
+
+系统子对话开始任何写入前，必须先输出：
+
+```text
+子对话类型：总控 / 系统子对话
+当前角色：例如 map_design / data_structure / economy_balance
+允许写入：DESIGN_INBOX/<system_name>/README.md、schemes/、version_plans/
+禁止修改：PROJECT_STATUS.md、AI_RULES/、AI_TASKS/、DESIGN_HUB/、WEB_DEMO/src/、GPT_DEMO/、UNITY_PROJECT/
+本轮写入类型：schemes / version_plans / 不写入
+是否允许晋升正式文件：否，除非用户和 CURRENT_TASK.md 明确授权
+```
 
 ---
 
@@ -45,6 +177,12 @@ GPT_DEMO/README.md
 1. PROJECT_STATUS.md
 2. AI_RULES/00_FAST_CONTEXT.md
 3. AI_TASKS/CURRENT_TASK.md
+```
+
+如果当前对话是系统子对话，优先按“系统子对话身份闸门”执行，并额外读取：
+
+```text
+4. DESIGN_INBOX/README.md
 ```
 
 如果是方案讨论阶段，且用户希望快速直观看到玩法或界面方向，可以追加读取：
@@ -66,6 +204,25 @@ GPT_DEMO/README.md
 ## 2. 按任务类型追加读取
 
 不要每次无差别读取全部文档。根据任务类型追加读取对应文件。
+
+### 系统子对话 / 专题设计审查
+
+```text
+DESIGN_INBOX/README.md
+DESIGN_INBOX/SUB_DIALOGUE_STARTER.md，如已有
+PROJECT_STATUS.md
+AI_RULES/00_FAST_CONTEXT.md
+```
+
+规则：
+
+```text
+系统子对话只投递，不拍板；
+schemes 保存好想法；
+version_plans 提交可评审版本方案；
+总控负责审核、合并和晋升；
+涉及源码实现时，先生成 TASK.md 工程任务，再由 Codex 执行。
+```
 
 ### 新项目立项
 
@@ -201,16 +358,18 @@ AI_TASKS/REVIEW_LOG.md
 
 ```text
 1. 人类制作人明确确认的最新要求
-2. DESIGN_HUB/09_DECISIONS.md
-3. AI_TASKS/CURRENT_TASK.md
-4. PROJECT_STATUS.md
-5. AI_TASKS/NEXT_CODEX_PROMPT.md
-6. 本文件
-7. GPT_DEMO/README.md
-8. 其他历史文档或日志
+2. 系统子对话身份闸门，适用于系统子对话的写入边界
+3. DESIGN_HUB/09_DECISIONS.md
+4. AI_TASKS/CURRENT_TASK.md
+5. PROJECT_STATUS.md
+6. AI_TASKS/NEXT_CODEX_PROMPT.md
+7. 本文件
+8. DESIGN_INBOX/README.md
+9. GPT_DEMO/README.md
+10. 其他历史文档或日志
 ```
 
-如果仍然无法判断，不要擅自决定，应写入：
+如果仍然无法判断，不要擅自决定。系统子对话应写入自己的 `version_plans/` 或 `schemes/`；总控或正式任务执行者才可按授权写入：
 
 ```text
 DESIGN_HUB/10_OPEN_QUESTIONS.md
@@ -224,6 +383,14 @@ DESIGN_HUB/10_OPEN_QUESTIONS.md
 
 ```text
 我已读取快速上下文和当前任务卡，当前任务事实来源为 AI_TASKS/CURRENT_TASK.md。
+```
+
+如果当前对话是系统子对话，必须改为先说明：
+
+```text
+我已识别当前对话为系统子对话。
+我将只在 DESIGN_INBOX/<system_name>/ 下沉淀 schemes 或 version_plans。
+我不会修改 PROJECT_STATUS.md、AI_RULES/、AI_TASKS/、DESIGN_HUB/、WEB_DEMO/src/、GPT_DEMO/、UNITY_PROJECT/，除非用户和 CURRENT_TASK.md 明确授权。
 ```
 
 如果是新项目立项阶段，AI 应继续说明：
